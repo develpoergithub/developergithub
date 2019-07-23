@@ -10593,8 +10593,8 @@ var app = (function () {
     			t_1 = space();
     			account.$$.fragment.c();
     			attr(h1, "class", "svelte-1ucbz36");
-    			add_location(h1, file$1, 15, 2, 305);
-    			add_location(main, file$1, 14, 0, 296);
+    			add_location(h1, file$1, 17, 2, 321);
+    			add_location(main, file$1, 16, 0, 312);
     		},
 
     		l: function claim(nodes) {
@@ -10635,7 +10635,9 @@ var app = (function () {
 
     function instance$1($$self) {
     	
-      const client = new DefaultClient({ uri: "http://localhost:8000/graphql" });
+      const client = new DefaultClient({
+        uri: "https://swapboard.herokuapp.com/graphql"
+      });
       setClient(client);
 
     	return {};

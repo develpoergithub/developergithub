@@ -2,7 +2,9 @@
   import Account from "./Account.svelte";
   import ApplloClient from "apollo-boost";
   import { setClient } from "svelte-apollo";
-  const client = new ApplloClient({ uri: "http://localhost:8000/graphql" });
+  const client = new ApplloClient({
+    uri: "https://swapboard.herokuapp.com/graphql"
+  });
   setClient(client);
 </script>
 
