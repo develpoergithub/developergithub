@@ -46,6 +46,7 @@ wrapt = "==1.11.2"
 Django = "==2.2.3"
 PyJWT = "==1.7.1"
 Rx = "==1.6.1"
+python-dotenv = "*"
 
 [requires]
 python_version = "3.7"
