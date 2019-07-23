@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "file": "bundle.css",
+  "sources": [
+    "../../../svelte-frontend/src/App.svelte"
+  ],
+  "sourcesContent": [
+    "<script>\n  import Account from \"./Account.svelte\";\n  import ApplloClient from \"apollo-boost\";\n  import { setClient } from \"svelte-apollo\";\n  const client = new ApplloClient({ uri: \"http://localhost:8000/graphql\" });\n  setClient(client);\n</script>\n\n<style>\n  h1 {\n    color: purple;\n  }\n</style>\n\n<main>\n  <h1>SWAP BOARD</h1>\n  <Account />\n</main>\n"
+  ],
+  "names": [],
+  "mappings": "AASE,EAAE,eAAC,CAAC,AACF,KAAK,CAAE,MAAM,AACf,CAAC"
+}
