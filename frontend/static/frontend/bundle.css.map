@@ -2,25 +2,23 @@
   "version": 3,
   "file": "bundle.css",
   "sources": [
-    "../../../svelte-frontend/src/App.svelte",
+    "../../../svelte-frontend/src/Home.svelte",
     "../../../svelte-frontend/src/NotFound.svelte",
-    "../../../svelte-frontend/src/account/ForgotPassword.svelte",
-    "../../../svelte-frontend/src/account/LogIn.svelte",
-    "../../../svelte-frontend/src/account/RecoverAccount.svelte",
     "../../../svelte-frontend/src/account/SignUp.svelte",
-    "../../../svelte-frontend/src/account/VerifyAccount.svelte",
-    "../../../svelte-frontend/src/Home.svelte"
+    "../../../svelte-frontend/src/account/RecoverAccount.svelte",
+    "../../../svelte-frontend/src/account/LogIn.svelte",
+    "../../../svelte-frontend/src/account/ForgotPassword.svelte",
+    "../../../svelte-frontend/src/account/VerifyAccount.svelte"
   ],
   "sourcesContent": [
-    "<script>\n  import Router from \"svelte-spa-router\";\n  import { routes } from \"./Routes.svelte\";\n  //import Account from \"./Account.svelte\";\n  // import ApplloClient from \"apollo-boost\";\n  // import { setClient } from \"svelte-apollo\";\n  // const client = new ApplloClient({\n  //   uri: \"https://swapboard.herokuapp.com/graphql\"\n  // });\n  // setClient(client);\n</script>\n\n<style>\n  h1 {\n    color: rgb(63, 63, 63);\n    text-align: center;\n  }\n  h3 {\n    color: rgb(63, 63, 63);\n    text-align: center;\n  }\n</style>\n\n<main>\n  <h1>SWAP BOARD DEVELOPMENT IN PROGRESS</h1>\n  <h3>Check back later</h3>\n  <Router {routes} />\n</main>\n",
+    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Home Page</h1>\n</div>\n",
     "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>404 Error: Page Not Found</h1>\n</div>\n",
-    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Forgot Password Page</h1>\n</div>\n",
-    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>LogIn Page</h1>\n</div>\n",
-    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Recover Account Page</h1>\n</div>\n",
     "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>SignUp Page</h1>\n</div>\n",
-    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Verify Account Page</h1>\n</div>\n",
-    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Home Page</h1>\n</div>\n"
+    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Recover Account Page</h1>\n</div>\n",
+    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>LogIn Page</h1>\n</div>\n",
+    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Forgot Password Page</h1>\n</div>\n",
+    "<script>\n  import { fade } from \"svelte/transition\";\n</script>\n\n<style>\n  h1 {\n    text-align: center;\n  }\n</style>\n\n<div in:fade={{ duration: 500 }}>\n  <h1>Verify Account Page</h1>\n</div>\n"
   ],
   "names": [],
-  "mappings": "AAaE,EAAE,cAAC,CAAC,AACF,KAAK,CAAE,IAAI,EAAE,CAAC,CAAC,EAAE,CAAC,CAAC,EAAE,CAAC,CACtB,UAAU,CAAE,MAAM,AACpB,CAAC,AACD,EAAE,cAAC,CAAC,AACF,KAAK,CAAE,IAAI,EAAE,CAAC,CAAC,EAAE,CAAC,CAAC,EAAE,CAAC,CACtB,UAAU,CAAE,MAAM,AACpB,CAAC;ACfD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC"
+  "mappings": "AAKE,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC;ACFD,EAAE,eAAC,CAAC,AACF,UAAU,CAAE,MAAM,AACpB,CAAC"
 }
