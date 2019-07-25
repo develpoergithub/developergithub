@@ -26,3 +26,5 @@ urlpatterns = [
     # path("graphql", GraphQLView.as_view(graphiql=True)),
     url(r"^graphql", csrf_exempt(GraphQLView.as_view(graphiql=False))),
 ]
+
+handler404 = "frontend.views.error_404_view"
