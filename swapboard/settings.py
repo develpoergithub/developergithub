@@ -26,9 +26,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = "b$tbbtfvvoivyf^-#)qx&i2)9c*44pz7r9d5bf8qfn1l1n40d="
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+
+# CHANGE THIS BEFORE PRODUCTION
+ALLOWED_HOSTS = ["127.0.0.1"]
 
 
 # Application definition
@@ -49,7 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -83,7 +85,7 @@ WSGI_APPLICATION = "swapboard.wsgi.application"
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
 DATABASES = {}
-DATABASES['default'] = dj_database_url.config(conn_max_age=600)
+DATABASES["default"] = dj_database_url.config(conn_max_age=600)
 
 # Authentication Backend
 AUTHENTICATION_BACKENDS = [
@@ -123,28 +125,24 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 GRAPHENE = {
     "SCHEMA": "swapboard.schema.schema",
-    "MIDDLEWARE": [
-        "graphql_jwt.middleware.JSONWebTokenMiddleware",
-    ],
+    "MIDDLEWARE": ["graphql_jwt.middleware.JSONWebTokenMiddleware"],
 }
 
 AUTH_USER_MODEL = "account.User"
 
 DJOSER = {
-    'DOMAIN': os.environ.get('DJANGO_DJOSER_DOMAIN', 'localhost:3000'),
-    'SITE_NAME': os.environ.get('DJANGO_DJOSER_SITE_NAME', 'my site'),
-    'PASSWORD_RESET_CONFIRM_URL': '?action=set-new-password&uid={uid}&token={token}',
-    'ACTIVATION_URL': 'activate?uid={uid}&token={token}',
-    'SEND_ACTIVATION_EMAIL': True,
+    "DOMAIN": os.environ.get("DJANGO_DJOSER_DOMAIN", "localhost:3000"),
+    "SITE_NAME": os.environ.get("DJANGO_DJOSER_SITE_NAME", "my site"),
+    "PASSWORD_RESET_CONFIRM_URL": "?action=set-new-password&uid={uid}&token={token}",
+    "ACTIVATION_URL": "activate?uid={uid}&token={token}",
+    "SEND_ACTIVATION_EMAIL": True,
 }
 
-JWT_AUTH = {
-    'JWT_ALLOW_REFRESH': True,
-}
+JWT_AUTH = {"JWT_ALLOW_REFRESH": True}
 
 
 dotenv_file = os.path.join(BASE_DIR, ".env")
@@ -153,4 +151,42 @@ if os.path.isfile(dotenv_file):
 
 django_heroku.settings(locals())
 
-del DATABASES['default']['OPTIONS']['sslmode']
+del DATABASES["default"]["OPTIONS"]["sslmode"]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {"require_debug_false": {"()": "django.utils.log.RequireDebugFalse"}},
+    "handlers": {
+        # Include the default Django email handler for errors
+        # This is what you'd get without configuring logging at all.
+        "mail_admins": {
+            "class": "django.utils.log.AdminEmailHandler",
+            "level": "ERROR",
+            "filters": ["require_debug_false"],
+            # But the emails are plain text by default - HTML is nicer
+            "include_html": True,
+        },
+        # Log to a text file that can be rotated by logrotate
+        "logfile": {
+            "class": "logging.handlers.WatchedFileHandler",
+            "filename": os.path.join(BASE_DIR, "error.txt"),
+        },
+    },
+    "loggers": {
+        # Again, default Django configuration to email unhandled exceptions
+        "django.request": {
+            "handlers": ["mail_admins"],
+            "level": "ERROR",
+            "propagate": True,
+        },
+        # Might as well log any errors anywhere else in Django
+        "django": {"handlers": ["logfile"], "level": "ERROR", "propagate": False},
+        # Your own app - this assumes all your logger names start with "myapp."
+        "swapboard": {
+            "handlers": ["logfile"],
+            "level": "DEBUG",  # Or maybe INFO or WARNING
+            "propogate": False,
+        },
+    },
+}

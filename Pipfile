@@ -6,6 +6,7 @@ verify_ssl = true
 [dev-packages]
 pylint = "*"
 autopep8 = "*"
+black = "*"
 
 [packages]
 gunicorn = "==19.9.0"
@@ -47,6 +48,7 @@ Django = "==2.2.3"
 PyJWT = "==1.7.1"
 Rx = "==1.6.1"
 python-dotenv = "*"
+django-anymail = {extras = ["mailgun"],version = "*"}
 
 [requires]
 python_version = "3.7"
