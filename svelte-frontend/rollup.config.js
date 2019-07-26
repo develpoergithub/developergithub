@@ -36,7 +36,6 @@ export default {
         importee === "svelte" || importee.startsWith("svelte/")
     }),
     commonjs(),
-
     // Watch the `public` directory and refresh the
     // browser on changes when not in production
     !production && livereload("../frontend/static/frontend"),

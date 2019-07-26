@@ -1,6 +1,7 @@
 <script>
   import Router from "svelte-spa-router";
   import { routes } from "./Routes.svelte";
+  import Header from "./Header.svelte";
   //import Account from "./Account.svelte";
   // import ApplloClient from "apollo-boost";
   // import { setClient } from "svelte-apollo";
@@ -15,5 +16,6 @@
 </style>
 
 <main>
+  <Header />
   <Router {routes} />
 </main>

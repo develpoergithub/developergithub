@@ -26,7 +26,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = "b$tbbtfvvoivyf^-#)qx&i2)9c*44pz7r9d5bf8qfn1l1n40d="
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 
 # CHANGE THIS BEFORE PRODUCTION
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "graphene_django",
+    "anymail",
     "account",
     "frontend",
     "user_profile",
@@ -144,6 +145,20 @@ DJOSER = {
 
 JWT_AUTH = {"JWT_ALLOW_REFRESH": True}
 
+ANYMAIL = {
+    # (exact settings here depend on your ESP...)
+    "MAILGUN_API_KEY": "30afb724640e5d693c1b42f985918a4f-c50f4a19-5048049f",
+    "MAILGUN_SENDER_DOMAIN": "martinsodabi.com",  # your Mailgun domain, if needed
+}
+EMAIL_BACKEND = (
+    "anymail.backends.mailgun.EmailBackend"
+)  # or sendgrid.EmailBackend, or...
+DEFAULT_FROM_EMAIL = (
+    "mailgun@martinsodabi.com"
+)  # if you don't already have this in settings
+SERVER_EMAIL = (
+    "mailgun@martinsodabi.com"
+)  # ditto (default from-email for Django errors)
 
 dotenv_file = os.path.join(BASE_DIR, ".env")
 if os.path.isfile(dotenv_file):
