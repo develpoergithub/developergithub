@@ -1,14 +1,15 @@
 from django.contrib.auth import get_user_model
 import graphene
 from graphene_django import DjangoObjectType
-from .models import User, UserConnection
+from .models import User, UserConnection, UserActivation
+import graphql_jwt
 from graphql_jwt.decorators import login_required
 
 
 class UserType(DjangoObjectType):
     class Meta:
         model = get_user_model()
-        exclude = ('password',)
+        exclude = ("password",)
 
 
 class UserConnectionType(DjangoObjectType):
@@ -16,25 +17,52 @@ class UserConnectionType(DjangoObjectType):
         model = UserConnection
 
 
+class UserActivationType(DjangoObjectType):
+    class Meta:
+        model = UserActivation
+
+
 class CreateUser(graphene.Mutation):
     user = graphene.Field(UserType)
 
     class Arguments:
         is_company = graphene.Boolean(required=True)
-        password = graphene.String(required=True)
         email = graphene.String(required=True)
+        password = graphene.String(required=True)
+        name = graphene.String(required=True)
 
-    def mutate(self, info, is_company, password, email):
-        user = get_user_model()(
-            is_company=is_company,
-            email=email,
-            username=email,
-        )
-
+    def mutate(self, info, is_company, email, password, name):
+        user = get_user_model()(is_company=is_company, email=email, username=name)
+        user.is_active = False
         user.set_password(password)
         user.save()
 
         return CreateUser(user=user)
+
+
+class ActivateUser(graphene.Mutation):
+    activated = graphene.Boolean()
+
+    class Arguments:
+        email = graphene.String(required=True)
+        # password = graphene.String(required=True)
+        code = graphene.String(required=True)
+
+    def mutate(self, info, code, email):
+        user = None
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise Exception("CAN NOT Resolve the User from email and password")
+
+        try:
+            activation = UserActivation.objects.get(user=user, code=code)
+            user.is_active = True
+            user.save()
+        except UserActivation.DoesNotExist:
+            raise Exception("CAN NOT Resolve the UserActivation from code")
+
+        return ActivateUser(activated=True)
 
 
 class CreateUserConnection(graphene.Mutation):
@@ -52,26 +80,21 @@ class CreateUserConnection(graphene.Mutation):
             raise Exception("CAN NOT Resolve the Company from id")
 
         if not company.is_company:
-            raise Exception(
-                "The Requested to UserConnection must be a Company")
+            raise Exception("The Requested to UserConnection must be a Company")
 
         user = info.context.user
         if user.is_company:
-            raise Exception(
-                "A Company Can not Initiate a UserConnection")
+            raise Exception("A Company Can not Initiate a UserConnection")
 
         try:
-            user_connection = UserConnection.objects.get(
-                company=company, employee=user)
+            user_connection = UserConnection.objects.get(company=company, employee=user)
             return CreateUserConnection(user_connection=user_connection)
-            #raise Exception("The Requested Connection already exist!")
+            # raise Exception("The Requested Connection already exist!")
         except UserConnection.DoesNotExist:
             pass
 
         user_connection = UserConnection(
-            employee=info.context.user,
-            company=company,
-            is_confirmed=False,
+            employee=info.context.user, company=company, is_confirmed=False
         )
 
         user_connection.save()

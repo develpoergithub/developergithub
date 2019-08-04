@@ -14,6 +14,7 @@ import os
 import django_heroku
 import dj_database_url
 import dotenv
+from django.utils.timezone import timedelta
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "graphene_django",
+    "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
     "anymail",
     "account",
     "frontend",
@@ -135,15 +137,15 @@ GRAPHENE = {
 
 AUTH_USER_MODEL = "account.User"
 
-DJOSER = {
-    "DOMAIN": os.environ.get("DJANGO_DJOSER_DOMAIN", "localhost:3000"),
-    "SITE_NAME": os.environ.get("DJANGO_DJOSER_SITE_NAME", "my site"),
-    "PASSWORD_RESET_CONFIRM_URL": "?action=set-new-password&uid={uid}&token={token}",
-    "ACTIVATION_URL": "activate?uid={uid}&token={token}",
-    "SEND_ACTIVATION_EMAIL": True,
-}
-
 JWT_AUTH = {"JWT_ALLOW_REFRESH": True}
+
+GRAPHQL_JWT = {
+    "JWT_VERIFY_EXPIRATION": True,
+    "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=15),
+    # "JWT_REFRESH_EXPIRATION_DELTA": timedelta(minutes=2),
+    "JWT_REFRESH_EXPIRED_HANDLER": lambda orig_iat, context: False,
+}
 
 ANYMAIL = {
     # (exact settings here depend on your ESP...)
