@@ -55,6 +55,7 @@ export const REFRESH_TOKEN = gql`
     refreshToken(refreshToken: $refreshToken) {
       token
       refreshToken
+      payload
     }
   }
 `;
