@@ -1,18 +1,17 @@
-import svelte from "rollup-plugin-svelte";
-import resolve from "rollup-plugin-node-resolve";
-import commonjs from "rollup-plugin-commonjs";
-import livereload from "rollup-plugin-livereload";
-import { terser } from "rollup-plugin-terser";
-
+import svelte from 'rollup-plugin-svelte';
+import resolve from 'rollup-plugin-node-resolve';
+import commonjs from 'rollup-plugin-commonjs';
+import livereload from 'rollup-plugin-livereload';
+import { terser } from 'rollup-plugin-terser';
 const production = !process.env.ROLLUP_WATCH;
 
 export default {
-  input: "src/main.js",
+  input: 'src/main.js',
   output: {
     sourcemap: true,
-    format: "iife",
-    name: "app",
-    file: "../frontend/static/frontend/bundle.js"
+    format: 'iife',
+    name: 'app',
+    file: '../frontend/static/frontend/bundle.js'
   },
   plugins: [
     svelte({
@@ -21,7 +20,7 @@ export default {
       // we'll extract any component CSS out into
       // a separate file — better for performance
       css: css => {
-        css.write("../frontend/static/frontend/bundle.css");
+        css.write('../frontend/static/frontend/bundle.css');
       }
     }),
 
@@ -33,12 +32,12 @@ export default {
     resolve({
       browser: true,
       dedupe: importee =>
-        importee === "svelte" || importee.startsWith("svelte/")
+        importee === 'svelte' || importee.startsWith('svelte/')
     }),
     commonjs(),
     // Watch the `public` directory and refresh the
     // browser on changes when not in production
-    !production && livereload("../frontend/static/frontend"),
+    !production && livereload('../frontend/static/frontend'),
 
     // If we're building for production (npm run build
     // instead of npm run dev), minify
