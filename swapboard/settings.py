@@ -27,7 +27,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = "b$tbbtfvvoivyf^-#)qx&i2)9c*44pz7r9d5bf8qfn1l1n40d="
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 
 # CHANGE THIS BEFORE PRODUCTION
@@ -142,7 +142,7 @@ JWT_AUTH = {"JWT_ALLOW_REFRESH": True}
 GRAPHQL_JWT = {
     "JWT_VERIFY_EXPIRATION": True,
     "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
-    "JWT_EXPIRATION_DELTA": timedelta(minutes=5),
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=2),
     # "JWT_REFRESH_EXPIRATION_DELTA": timedelta(minutes=2),
     "JWT_REFRESH_EXPIRED_HANDLER": lambda orig_iat, context: False,
 }
