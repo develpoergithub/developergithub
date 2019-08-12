@@ -2,27 +2,43 @@
   import { push, pop, replace } from "svelte-spa-router";
   import { fade } from "svelte/transition";
   import { getClient, query, mutate } from "svelte-apollo";
-  import { isLoggedIn, refreshToken } from "../store.js";
+  import {
+    isLoggedIn,
+    keepMeLoggedIn,
+    lastLoggedIn,
+    refreshToken
+  } from "../store.js";
   import { LOGIN_USER } from "../queries.js";
+  import AuthRoute from "../AuthRoute.svelte";
+  import { tokenRefreshTimeoutFunc } from "../authMethods.js";
+
+  // if ($isLoggedIn === true) {
+  //   push("/dashboard/");
+  // }
 
   const client = getClient();
 
   let email = "";
   let password = "";
+  let isKeepMeLoggedIn = false;
 
   function handleSubmit() {
-    login();
+    login(email, password, isKeepMeLoggedIn);
   }
 
-  async function login() {
+  async function login(email, password, isKeepMeLoggedIn) {
     try {
       await mutate(client, {
         mutation: LOGIN_USER,
         variables: { email, password }
       }).then(result => {
+        localStorage.setItem("login-event", "login" + Math.random());
         refreshToken.set(result.data.tokenAuth.refreshToken);
+        keepMeLoggedIn.set(isKeepMeLoggedIn);
+        lastLoggedIn.set(Date.now());
         isLoggedIn.set(true);
-        //push("/dashboard/");
+        // tokenRefreshTimeoutFunc(client);
+        // push("/dashboard/");
       });
     } catch (error) {
       console.log(error);
@@ -39,7 +55,7 @@
   }
   .card {
     width: 22rem;
-    height: 25rem;
+    height: 28rem;
   }
   h3 {
     text-align: center;
@@ -78,6 +94,7 @@
   }
 </style>
 
+<AuthRoute />
 <main>
   <div class="card" in:fade={{ duration: 500 }}>
     <div class="card-body">
@@ -110,7 +127,16 @@
             id="exampleInputPassword1"
             placeholder="Password" />
         </div>
-        <div class="form-group form-check" />
+        <div class="form-group form-check">
+          <input
+            bind:checked={isKeepMeLoggedIn}
+            type="checkbox"
+            class="form-check-input"
+            id="exampleCheck1" />
+          <label class="form-check-label" for="exampleCheck1">
+            keep me logged in
+          </label>
+        </div>
         <button type="submit" class="btn btn-primary">
           <h5>Login</h5>
         </button>
@@ -120,6 +146,9 @@
         </p>
         <p class="form-text text-muted fp">
           <a href="#/recoveraccount">Forgort Password?</a>
+        </p>
+        <p class="form-text text-muted ca">
+          <a href="#/verifyaccount">Verify your account?</a>
         </p>
       </form>
     </div>

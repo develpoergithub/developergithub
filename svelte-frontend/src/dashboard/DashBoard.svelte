@@ -1,12 +1,12 @@
 <script>
+  import { onMount } from "svelte";
   import { fade } from "svelte/transition";
-  import Router from "svelte-spa-router";
-  import { push, pop, replace } from "svelte-spa-router";
+  import Router, { push, pop, replace } from "svelte-spa-router";
   import { routes } from "../DashBoardRoutes.svelte";
-  import { isLoggedIn, user } from "../store.js";
+  import { isLoggedIn, refreshToken, user } from "../store.js";
   import { getClient, query, mutate } from "svelte-apollo";
   import { GET_USER } from "../queries.js";
-  import { onMount } from "svelte";
+  import { tokenRefreshTimeoutFunc } from "../authMethods.js";
 
   const client = getClient();
 
@@ -21,10 +21,15 @@
       });
     } catch (error) {
       console.log(error);
+      //tokenRefreshTimeoutFunc(client);
     }
   }
 
   onMount(async () => {
+    if ($isLoggedIn === false) {
+      return push("/login");
+    }
+
     fetchUser();
   });
 </script>

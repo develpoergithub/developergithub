@@ -3,6 +3,12 @@
   import { getClient, query, mutate } from "svelte-apollo";
   import { CREATE_USER } from "../queries.js";
   import { fade } from "svelte/transition";
+  import { isLoggedIn } from "../store.js";
+  import AuthRoute from "../AuthRoute.svelte";
+
+  // if ($isLoggedIn === true) {
+  //   push("/dashboard/");
+  // }
 
   const client = getClient();
 
@@ -103,6 +109,7 @@
   }
 </style>
 
+<AuthRoute />
 <main>
   <div class="card .mx-auto" in:fade={{ duration: 500 }}>
     <div class="card-body">
@@ -179,6 +186,8 @@
         <p class="form-text text-muted">
           Already registered?
           <a href="#/login">Login</a>
+          or
+          <a href="#/verifyaccount">Verify your account</a>
         </p>
       </form>
     </div>

@@ -1,9 +1,12 @@
 <script>
-  import { isLoggedIn, user } from "./store.js";
+  import { keepMeLoggedIn, isLoggedIn, refreshToken, user } from "./store.js";
   import { push } from "svelte-spa-router";
 
   function handleLogout() {
+    refreshToken.set("");
+    keepMeLoggedIn.set(false);
     isLoggedIn.set(false);
+    localStorage.setItem("logout-event", "logout" + Math.random());
   }
 </script>
 
