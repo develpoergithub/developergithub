@@ -19,7 +19,7 @@
   } from "./authMethods.js";
 
   const client = new ApplloClient({
-    uri: "http://localhost:8000/graphql"
+    uri: "https://swapboard.herokuapp.com/graphql"
   });
 
   setClient(client);
