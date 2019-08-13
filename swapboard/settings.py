@@ -29,6 +29,8 @@ SECRET_KEY = "b$tbbtfvvoivyf^-#)qx&i2)9c*44pz7r9d5bf8qfn1l1n40d="
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+SECURE_SSL_REDIRECT = True
+
 
 # CHANGE THIS BEFORE PRODUCTION
 ALLOWED_HOSTS = ["127.0.0.1"]
