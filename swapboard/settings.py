@@ -143,7 +143,7 @@ JWT_AUTH = {"JWT_ALLOW_REFRESH": True}
 GRAPHQL_JWT = {
     "JWT_VERIFY_EXPIRATION": True,
     "JWT_LONG_RUNNING_REFRESH_TOKEN": True,
-    "JWT_EXPIRATION_DELTA": timedelta(minutes=2),
+    "JWT_EXPIRATION_DELTA": timedelta(minutes=15),
     # "JWT_REFRESH_EXPIRATION_DELTA": timedelta(minutes=2),
     "JWT_REFRESH_EXPIRED_HANDLER": lambda orig_iat, context: False,
 }

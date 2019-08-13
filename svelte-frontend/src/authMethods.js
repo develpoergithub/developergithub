@@ -28,17 +28,14 @@ export async function tokenRefresh(client, oldToken) {
 export function tokenRefreshTimeoutFunc(client) {
   const prevLoggedInDate = JSON.parse(localStorage.getItem("lastLoggedIn"));
   const oldToken = JSON.parse(localStorage.getItem("refreshToken"));
-  //clearTokenRefreshTimeout();
+  const refreshExpirationTime = 15 * 60000;
   let timeDifference = Math.abs(Date.now() - prevLoggedInDate);
-  //Convert milliseconds to minutes
-  if (timeDifference / 60000 > 2) {
-    console.log(timeDifference / 60000 + " > " + "2Minutes");
+
+  if (timeDifference > refreshExpirationTime) {
+    console.log(timeDifference / 60000 + " > " + refreshExpirationTime / 60000);
     tokenRefresh(client, oldToken);
   } else {
-    timeDifference = 120000 - timeDifference;
-    // if (JSON.parse(sessionStorage.getItem("startedTimeout-session")) === true) {
-    //   return console.log("This tab already started timeout");
-    // }
+    let remainingTime = refreshExpirationTime - timeDifference;
 
     if (localStorage.getItem("startedTimeout") === null) {
       localStorage.setItem("startedTimeout", JSON.stringify(false));
@@ -52,17 +49,19 @@ export function tokenRefreshTimeoutFunc(client) {
       JSON.parse(localStorage.getItem("startedTimeout")) === false ||
       JSON.parse(sessionStorage.getItem("startedTimeout-session")) === true
     ) {
-      console.log(timeDifference / 60000 + " < " + "2Minutes");
-      const tenPercent = timeDifference - timeDifference * 0.1;
+      console.log(
+        timeDifference / 60000 + " < " + refreshExpirationTime / 60000
+      );
+      let remainingTimeMinusTenPercent = remainingTime - remainingTime * 0.1;
       tokenRefreshTimeout = setTimeout(
         tokenRefresh,
-        tenPercent,
+        remainingTimeMinusTenPercent,
         client,
         oldToken
       );
       localStorage.setItem("startedTimeout", JSON.stringify(true));
       sessionStorage.setItem("startedTimeout-session", JSON.stringify(true));
-      console.log("Timeout " + tenPercent);
+      console.log("Timeout " + remainingTimeMinusTenPercent);
     } else {
       console.log("Already started timeout!!!");
     }
@@ -71,4 +70,5 @@ export function tokenRefreshTimeoutFunc(client) {
 
 export function clearTokenRefreshTimeout() {
   clearTimeout(tokenRefreshTimeout);
+  console.log("Cleared timeout!!!");
 }

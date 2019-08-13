@@ -150,3 +150,11 @@ Traceback (most recent call last):
     raise ValueError("Missing staticfiles manifest entry for '%s'" % clean_name)
 ValueError: Missing staticfiles manifest entry for 'frontend/bundle.css'
 "GET / HTTP/1.1" 500 27
+You're accessing the development server over HTTPS, but it only supports HTTP.
+
+You're accessing the development server over HTTPS, but it only supports HTTP.
+
+You're accessing the development server over HTTPS, but it only supports HTTP.
+
+You're accessing the development server over HTTPS, but it only supports HTTP.
+
