@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "graphene_django",
     "graphql_jwt.refresh_token.apps.RefreshTokenConfig",
     "anymail",
+    "reset_migrations",
     "account",
     "frontend",
     "user_profile",
@@ -156,10 +157,10 @@ EMAIL_BACKEND = (
     "anymail.backends.mailgun.EmailBackend"
 )  # or sendgrid.EmailBackend, or...
 DEFAULT_FROM_EMAIL = (
-    "mailgun@martinsodabi.com"
+    "swapboard@martinsodabi.com"
 )  # if you don't already have this in settings
 SERVER_EMAIL = (
-    "mailgun@martinsodabi.com"
+    "swapboard@martinsodabi.com"
 )  # ditto (default from-email for Django errors)
 
 dotenv_file = os.path.join(BASE_DIR, ".env")
