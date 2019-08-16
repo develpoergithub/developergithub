@@ -55,7 +55,12 @@ export function tokenRefreshTimeoutFunc(client) {
       sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
     }
 
-    if (JSON.parse(localStorage.getItem("startedTimeout")) === false) {
+    const isSessionTimeout = JSON.parse(
+      sessionStorage.getItem("startedTimeoutSession")
+    );
+    const isStartedTimeout = JSON.parse(localStorage.getItem("startedTimeout"));
+
+    if (isStartedTimeout === false || isSessionTimeout === true) {
       console.log(
         timeDifference / 60000 + " < " + refreshExpirationTime / 60000
       );
@@ -70,7 +75,7 @@ export function tokenRefreshTimeoutFunc(client) {
       // localStorage.setItem("start-timeout-event", JSON.stringify(true));
       sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
       localStorage.setItem("startedTimeout", JSON.stringify(true));
-      console.log("Timeout " + remainingTimeMinusTenPercent);
+      console.log("Fetch token in : " + remainingTimeMinusTenPercent / 60000);
     } else {
       console.log("Already started timeout!!!");
     }

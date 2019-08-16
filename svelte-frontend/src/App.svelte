@@ -38,7 +38,7 @@
     if (event.key == "login-event") {
       setTimeout(() => {
         isLoggedIn.set(true);
-      }, Math.random() * (3000 - 1000) + 1000);
+      }, Math.random() * (2000 - 1000) + 1000);
       // localStorage.removeItem("login-event");
     } else if (event.key == "logout-event") {
       sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
