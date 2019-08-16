@@ -1,9 +1,13 @@
+<script context="module">
+  export let notification;
+</script>
+
 <script>
-  import { onMount } from "svelte";
+  import { onMount, afterUpdate, beforeUpdate, setContext } from "svelte";
   import Router, { push, pop, replace } from "svelte-spa-router";
   import { routes } from "./Routes.svelte";
   import Header from "./Header.svelte";
-  import ApplloClient from "apollo-boost";
+  import ApolloClient from "apollo-boost";
   import { setClient, getClient, query, mutate } from "svelte-apollo";
   import {
     keepMeLoggedIn,
@@ -17,8 +21,9 @@
     tokenRefreshTimeoutFunc,
     clearTokenRefreshTimeout
   } from "./authMethods.js";
+  import Noto, { notifications } from "./Noto.svelte";
 
-  const client = new ApplloClient({
+  const client = new ApolloClient({
     uri: "https://swapboard.herokuapp.com/graphql"
   });
 
@@ -31,14 +36,14 @@
 
   window.addEventListener("storage", function(event) {
     if (event.key == "login-event") {
-      isLoggedIn.set(true);
-      // window.location.reload();
+      setTimeout(() => {
+        isLoggedIn.set(true);
+      }, Math.random() * (3000 - 1000) + 1000);
       // localStorage.removeItem("login-event");
     } else if (event.key == "logout-event") {
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
       isLoggedIn.set(false);
-      // window.location.reload();
       // localStorage.removeItem("logout-event");
-      //window.location.href = "/";
     } else if (event.key == "new-tab-event") {
       if ($isLoggedIn === true) {
         localStorage.setItem(
@@ -49,42 +54,31 @@
       }
     } else if (event.key == "currently-logged-in-event") {
       isLoggedIn.set(true);
-      // push("/dashboard/");
       // localStorage.removeItem("currently-logged-in-event");
-    } else if (event.key == "startedTimeout") {
-      if (JSON.parse(event.newValue) === false) {
-        setTimeout(() => {
-          tokenRefreshTimeoutFunc(client);
-        }, Math.random() * (10000 - 5000) + 5000);
-      } else {
-        sessionStorage.setItem("startedTimeout-session", JSON.stringify(false));
-      }
+    } else if (event.key == "start-timeout-event") {
+      setTimeout(() => {
+        tokenRefreshTimeoutFunc(client);
+      }, Math.random() * (10000 - 5000) + 5000);
     }
   });
 
   window.addEventListener("beforeunload", function(event) {
-    if (sessionStorage.getItem("startedTimeout-session") === null) {
+    if (sessionStorage.getItem("startedTimeoutSession") === null) {
       return;
     }
 
-    if (JSON.parse(sessionStorage.getItem("startedTimeout-session")) === true) {
+    if (JSON.parse(sessionStorage.getItem("startedTimeoutSession")) === true) {
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
       localStorage.setItem("startedTimeout", JSON.stringify(false));
-      sessionStorage.setItem("startedTimeout-session", JSON.stringify(false));
+      localStorage.setItem("start-timeout-event", "timeout" + Math.random());
     }
   });
 
   onMount(() => {
-    localStorage.setItem("new-tab-event", "newtab" + Math.random());
-    if ($keepMeLoggedIn === true) {
+    if ($keepMeLoggedIn === true && $isLoggedIn === false) {
       isLoggedIn.set(true);
-    }
-
-    if ($isLoggedIn === false) {
-      return push("/login");
-    }
-
-    if ($refreshToken !== "") {
-      //tokenRefreshTimeoutFunc(client);
+    } else {
+      localStorage.setItem("new-tab-event", "newtab" + Math.random());
     }
   });
 
@@ -102,6 +96,7 @@
 </style>
 
 <main>
+  <Noto />
   <Header />
   <Router {routes} />
 </main>

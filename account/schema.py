@@ -32,6 +32,12 @@ class CreateUser(graphene.Mutation):
         name = graphene.String(required=True)
 
     def mutate(self, info, is_company, email, password, name):
+        email = email.strip()
+        password = password.strip()
+
+        if not name.strip() or not email or not password:
+            raise Exception("One or more of your fields are empty")
+
         user = get_user_model()(is_company=is_company, email=email, username=name)
         user.is_active = False
         user.set_password(password)
@@ -53,7 +59,7 @@ class ActivateUser(graphene.Mutation):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise Exception("CAN NOT Resolve the User from email and password")
+            raise Exception("CAN NOT Resolve the User from email")
 
         try:
             activation = UserActivation.objects.get(user=user, code=code)
@@ -80,14 +86,16 @@ class CreateUserConnection(graphene.Mutation):
             raise Exception("CAN NOT Resolve the Company from id")
 
         if not company.is_company:
-            raise Exception("The Requested to UserConnection must be a Company")
+            raise Exception(
+                "The Requested to UserConnection must be a Company")
 
         user = info.context.user
         if user.is_company:
             raise Exception("A Company Can not Initiate a UserConnection")
 
         try:
-            user_connection = UserConnection.objects.get(company=company, employee=user)
+            user_connection = UserConnection.objects.get(
+                company=company, employee=user)
             return CreateUserConnection(user_connection=user_connection)
             # raise Exception("The Requested Connection already exist!")
         except UserConnection.DoesNotExist:

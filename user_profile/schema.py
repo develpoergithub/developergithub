@@ -33,20 +33,20 @@ class UpdateUserProfile(graphene.Mutation):
 
         # Assign the New Fields Here!
         if not info.context.user.is_company:
-            profile.first_name = args.pop("first_name")
-            profile.last_name = args.pop("last_name")
-            profile.age = args.pop("age")
-            profile.email = args.pop("email")
-            profile.photo_url = args.pop("photo_url")
+            profile.first_name = args.pop("first_name").strip()
+            profile.last_name = args.pop("last_name").strip()
+            profile.age = args.pop("age").strip()
+            profile.email = args.pop("email").strip()
+            profile.photo_url = args.pop("photo_url").strip()
             tel = args.pop("tel")
         else:
             profile.admin_name = args.pop("admin_name")
             profile.company_name = args.pop("company_name")
             profile.company_address = args.pop("company_address")
             profile.company_position = args.pop("company_position")
-            profile.url = args.pop("url")
-            profile.email = args.pop("email")
-            profile.photo_url = args.pop("photo_url")
+            profile.url = args.pop("url").strip()
+            profile.email = args.pop("email").strip()
+            profile.photo_url = args.pop("photo_url").strip()
             tel = args.pop("tel")
 
         profile.save()

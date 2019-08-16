@@ -1,10 +1,21 @@
+import { push, pop, replace } from "svelte-spa-router";
 import { getClient, query, mutate } from "svelte-apollo";
-import { refreshToken, lastLoggedIn, isLoggedIn } from "./store.js";
-import { REFRESH_TOKEN } from "./queries.js";
+import {
+  refreshToken,
+  keepMeLoggedIn,
+  lastLoggedIn,
+  isLoggedIn
+} from "./store.js";
+import {
+  CREATE_USER,
+  ACTIVATE_USER,
+  LOGIN_USER,
+  REFRESH_TOKEN
+} from "./queries.js";
 
 let tokenRefreshTimeout;
 
-export async function tokenRefresh(client, oldToken) {
+async function tokenRefresh(client, oldToken) {
   console.log("At token refresh");
   try {
     await mutate(client, {
@@ -19,9 +30,8 @@ export async function tokenRefresh(client, oldToken) {
       // push("/dashboard/");
     });
   } catch (error) {
-    console.log(error);
+    // console.log(error);
     isLoggedIn.set(false);
-    // push("/login");
   }
 }
 
@@ -41,26 +51,25 @@ export function tokenRefreshTimeoutFunc(client) {
       localStorage.setItem("startedTimeout", JSON.stringify(false));
     }
 
-    if (sessionStorage.getItem("startedTimeout-session") === null) {
-      sessionStorage.setItem("startedTimeout-session", JSON.stringify(false));
+    if (sessionStorage.getItem("startedTimeoutSession") === null) {
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
     }
 
-    if (
-      JSON.parse(localStorage.getItem("startedTimeout")) === false ||
-      JSON.parse(sessionStorage.getItem("startedTimeout-session")) === true
-    ) {
+    if (JSON.parse(localStorage.getItem("startedTimeout")) === false) {
       console.log(
         timeDifference / 60000 + " < " + refreshExpirationTime / 60000
       );
       let remainingTimeMinusTenPercent = remainingTime - remainingTime * 0.1;
+      clearTokenRefreshTimeout();
       tokenRefreshTimeout = setTimeout(
         tokenRefresh,
         remainingTimeMinusTenPercent,
         client,
         oldToken
       );
+      // localStorage.setItem("start-timeout-event", JSON.stringify(true));
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
       localStorage.setItem("startedTimeout", JSON.stringify(true));
-      sessionStorage.setItem("startedTimeout-session", JSON.stringify(true));
       console.log("Timeout " + remainingTimeMinusTenPercent);
     } else {
       console.log("Already started timeout!!!");
@@ -70,5 +79,48 @@ export function tokenRefreshTimeoutFunc(client) {
 
 export function clearTokenRefreshTimeout() {
   clearTimeout(tokenRefreshTimeout);
-  console.log("Cleared timeout!!!");
+}
+
+export async function register(client, isCompany, name, email, password) {
+  await mutate(client, {
+    mutation: CREATE_USER,
+    variables: { isCompany, name, email, password }
+  }).then(() => {
+    push("/verifyaccount");
+  });
+}
+
+export async function activateAccount(client, email, code) {
+  await mutate(client, {
+    mutation: ACTIVATE_USER,
+    variables: { email, code }
+  }).then(() => {
+    push("/login");
+  });
+}
+
+export async function login(client, email, password, isKeepMeLoggedIn) {
+  await mutate(client, {
+    mutation: LOGIN_USER,
+    variables: { email, password }
+  }).then(result => {
+    refreshToken.set(result.data.tokenAuth.refreshToken);
+    keepMeLoggedIn.set(isKeepMeLoggedIn);
+    lastLoggedIn.set(Date.now());
+    isLoggedIn.set(true);
+    // This must be here!!!
+    localStorage.setItem("login-event", "login" + Math.random());
+    // tokenRefreshTimeoutFunc(client);
+    // push("/dashboard/");
+  });
+}
+
+export function logout() {
+  refreshToken.set("");
+  lastLoggedIn.set(0);
+  keepMeLoggedIn.set(false);
+  isLoggedIn.set(false);
+  sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
+  localStorage.setItem("startedTimeout", JSON.stringify(false));
+  localStorage.setItem("logout-event", "logout" + Math.random());
 }

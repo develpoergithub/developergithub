@@ -2,27 +2,33 @@
   import { fade } from "svelte/transition";
   import { push, pop, replace } from "svelte-spa-router";
   import { getClient, query, mutate } from "svelte-apollo";
-  import { ACTIVATE_USER } from "../queries.js";
+  import { activateAccount } from "../authMethods.js";
+  import { notifications } from "../Noto.svelte";
 
   const client = getClient();
 
   let email = "";
   let code = "";
+  let formIsDisabled = false;
 
-  function handleSubmit() {
-    activateUser();
-  }
+  async function handleSubmit() {
+    formIsDisabled = true;
 
-  async function activateUser() {
+    setTimeout(() => {
+      formIsDisabled = false;
+    }, 2000);
+
+    if (email.trim().length === 0 || code.trim().length === 0) {
+      email = "";
+      code = "";
+      return notifications.danger("Email or code fields can not be empty");
+    }
+
     try {
-      await mutate(client, {
-        mutation: ACTIVATE_USER,
-        variables: { email, code }
-      }).then(() => {
-        push("/login");
-      });
+      await activateAccount(client, email, code);
     } catch (error) {
-      console.log(error);
+      // console.log(error);
+      notifications.danger("Please make sure your code and email are correct");
     }
   }
 </script>
@@ -77,31 +83,30 @@
         </h6>
       </div>
       <form on:submit|preventDefault={handleSubmit}>
-        <div class="form-group">
-          <!-- <label for="exampleInputEmail1">Email address</label> -->
-          <input
-            bind:value={email}
-            type="email"
-            class="form-control"
-            id="exampleInputEmail1"
-            aria-describedby="emailHelp"
-            placeholder="Enter email"
-            required />
-          <input
-            bind:value={code}
-            type="text"
-            class="form-control"
-            id="exampleInputText1"
-            aria-describedby="textHelp"
-            placeholder="Enter code"
-            required />
-        </div>
+        <fieldset disabled={formIsDisabled}>
+          <div class="form-group">
+            <!-- <label for="exampleInputEmail1">Email address</label> -->
+            <input
+              bind:value={email}
+              type="email"
+              class="form-control"
+              id="exampleInputEmail1"
+              aria-describedby="emailHelp"
+              placeholder="Enter email" />
+            <input
+              bind:value={code}
+              type="text"
+              class="form-control"
+              id="exampleInputText1"
+              aria-describedby="textHelp"
+              placeholder="Enter code" />
+          </div>
 
-        <div class="form-group form-check" />
-        <button type="submit" class="btn btn-primary">
-          <h5>Confirm Account</h5>
-        </button>
-
+          <div class="form-group form-check" />
+          <button type="submit" class="btn btn-primary">
+            <h5>Confirm Account</h5>
+          </button>
+        </fieldset>
       </form>
     </div>
   </div>
