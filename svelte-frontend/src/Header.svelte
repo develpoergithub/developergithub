@@ -39,7 +39,7 @@
               data-toggle="dropdown"
               aria-haspopup="true"
               aria-expanded="false">
-              {$user.email}
+              {#if $user.email !== undefined}{$user.email}{:else}Loading...{/if}
             </a>
             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
               <a class="dropdown-item" href="#/">Profile</a>

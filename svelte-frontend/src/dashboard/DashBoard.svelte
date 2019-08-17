@@ -9,6 +9,7 @@
   import { tokenRefreshTimeoutFunc } from "../authMethods.js";
 
   const client = getClient();
+  let pingCount = 0;
 
   const getUser = query(client, {
     query: GET_USER
@@ -17,20 +18,25 @@
   async function fetchUser() {
     try {
       await getUser.refetch().then(result => {
+        pingCount = 0;
         user.set(result.data.me);
       });
     } catch (error) {
-      console.log(error);
-      //tokenRefreshTimeoutFunc(client);
+      // console.log(error);
+      if (pingCount < 3) {
+        pingCount += 1;
+        setTimeout(() => {
+          fetchUser();
+        }, 1000);
+      }
     }
   }
 
   onMount(async () => {
-    if ($isLoggedIn === false) {
-      return push("/login");
-    }
-
-    fetchUser();
+    // Set timeout only for testing
+    setTimeout(() => {
+      fetchUser();
+    }, 2000);
   });
 </script>
 

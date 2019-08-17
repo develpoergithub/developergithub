@@ -13,7 +13,8 @@
     keepMeLoggedIn,
     isLoggedIn,
     lastLoggedIn,
-    refreshToken
+    refreshToken,
+    user
   } from "./store.js";
   import { useLocalStorage, useSessionStorage } from "./storage.js";
   import { REFRESH_TOKEN } from "./queries.js";
@@ -24,6 +25,7 @@
   import Noto, { notifications } from "./Noto.svelte";
 
   const client = new ApolloClient({
+    // uri: "http://localhost:8000/graphql"
     uri: "https://swapboard.herokuapp.com/graphql"
   });
 
@@ -33,6 +35,7 @@
   useLocalStorage(keepMeLoggedIn, "keepMeLoggedIn");
   useLocalStorage(refreshToken, "refreshToken");
   useLocalStorage(lastLoggedIn, "lastLoggedIn");
+  useLocalStorage(user, "user");
 
   window.addEventListener("storage", function(event) {
     if (event.key == "login-event") {

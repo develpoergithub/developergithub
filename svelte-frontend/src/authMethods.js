@@ -4,7 +4,8 @@ import {
   refreshToken,
   keepMeLoggedIn,
   lastLoggedIn,
-  isLoggedIn
+  isLoggedIn,
+  user
 } from "./store.js";
 import {
   CREATE_USER,
@@ -36,49 +37,53 @@ async function tokenRefresh(client, oldToken) {
 }
 
 export function tokenRefreshTimeoutFunc(client) {
+  if (localStorage.getItem("startedTimeout") === null) {
+    localStorage.setItem("startedTimeout", JSON.stringify(false));
+  }
+
+  if (sessionStorage.getItem("startedTimeoutSession") === null) {
+    sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
+  }
+
+  const isStartedTimeout = JSON.parse(localStorage.getItem("startedTimeout"));
+  const isSessionTimeout = JSON.parse(
+    sessionStorage.getItem("startedTimeoutSession")
+  );
+
+  if (isStartedTimeout === true && isSessionTimeout === false) {
+    return console.log("Already started Timeout, exiting function!!!");
+  }
+
   const prevLoggedInDate = JSON.parse(localStorage.getItem("lastLoggedIn"));
   const oldToken = JSON.parse(localStorage.getItem("refreshToken"));
   const refreshExpirationTime = 15 * 60000;
+
   let timeDifference = Math.abs(Date.now() - prevLoggedInDate);
 
   if (timeDifference > refreshExpirationTime) {
     console.log(timeDifference / 60000 + " > " + refreshExpirationTime / 60000);
     tokenRefresh(client, oldToken);
   } else {
+    console.log(timeDifference / 60000 + " < " + refreshExpirationTime / 60000);
     let remainingTime = refreshExpirationTime - timeDifference;
-
-    if (localStorage.getItem("startedTimeout") === null) {
-      localStorage.setItem("startedTimeout", JSON.stringify(false));
-    }
-
-    if (sessionStorage.getItem("startedTimeoutSession") === null) {
-      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
-    }
-
-    const isSessionTimeout = JSON.parse(
-      sessionStorage.getItem("startedTimeoutSession")
+    let remainingTimeMinusTenPercent = remainingTime - remainingTime * 0.1;
+    clearTokenRefreshTimeout();
+    tokenRefreshTimeout = setTimeout(
+      tokenRefresh,
+      remainingTimeMinusTenPercent,
+      client,
+      oldToken
     );
-    const isStartedTimeout = JSON.parse(localStorage.getItem("startedTimeout"));
 
-    if (isStartedTimeout === false || isSessionTimeout === true) {
-      console.log(
-        timeDifference / 60000 + " < " + refreshExpirationTime / 60000
-      );
-      let remainingTimeMinusTenPercent = remainingTime - remainingTime * 0.1;
-      clearTokenRefreshTimeout();
-      tokenRefreshTimeout = setTimeout(
-        tokenRefresh,
-        remainingTimeMinusTenPercent,
-        client,
-        oldToken
-      );
-      // localStorage.setItem("start-timeout-event", JSON.stringify(true));
-      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
+    if (isStartedTimeout === false) {
       localStorage.setItem("startedTimeout", JSON.stringify(true));
-      console.log("Fetch token in : " + remainingTimeMinusTenPercent / 60000);
-    } else {
-      console.log("Already started timeout!!!");
     }
+
+    if (isSessionTimeout === false) {
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
+    }
+
+    console.log("Fetch token in : " + remainingTimeMinusTenPercent / 60000);
   }
 }
 
@@ -125,6 +130,7 @@ export function logout() {
   lastLoggedIn.set(0);
   keepMeLoggedIn.set(false);
   isLoggedIn.set(false);
+  user.set({});
   sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
   localStorage.setItem("startedTimeout", JSON.stringify(false));
   localStorage.setItem("logout-event", "logout" + Math.random());
