@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.dispatch import receiver
 from django.db.models.signals import post_save
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.utils.crypto import get_random_string
 
 # Create your models here.
@@ -33,10 +33,12 @@ class UserConnection(models.Model):
     employee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="employee_set",
-        null=False,
+        null=True,
         on_delete=models.CASCADE,
     )
+    employee_email = models.EmailField(null=False)
     is_confirmed = models.BooleanField(default=False)
+    is_declined = models.BooleanField(default=False)
 
 
 class UserActivation(models.Model):
@@ -52,7 +54,8 @@ class UserActivation(models.Model):
 def create_and_send_activation_email(sender, **kwargs):
     if kwargs.get("created"):
         code = get_random_string(length=6, allowed_chars="1234567890")
-        UserActivation.objects.get_or_create(user=kwargs.get("instance"), code=code)
+        UserActivation.objects.get_or_create(
+            user=kwargs.get("instance"), code=code)
         send_mail(
             "Welcome to SwapBoard!",
             "Thank you for signing up to SwapBoard, your activation code is " + code,
@@ -60,3 +63,18 @@ def create_and_send_activation_email(sender, **kwargs):
             [kwargs.get("instance").email],
         )
 
+
+@receiver(post_save, sender=UserConnection)
+def create_and_send_user_connection_email(sender, instance, created, **kwargs):
+    if created:
+        id = instance.id
+
+        msg = EmailMultiAlternatives(
+            subject="Invitation to join " +
+            instance.company.userprofile.company_name + " on SwapBoard",
+            body="Click the link to join: http://localhost:8000/#/confirminvitation/" +
+            str(id),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[instance.employee_email])
+
+        msg.send()

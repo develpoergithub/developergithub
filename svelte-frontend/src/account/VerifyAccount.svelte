@@ -4,6 +4,7 @@
   import { getClient, query, mutate } from "svelte-apollo";
   import { activateAccount } from "../authMethods.js";
   import { notifications } from "../Noto.svelte";
+  import AuthRoute from "../AuthRoute.svelte";
 
   const client = getClient();
 
@@ -73,6 +74,7 @@
   }
 </style>
 
+<AuthRoute />
 <main>
   <div class="card" in:fade={{ duration: 500 }}>
     <div class="card-body">

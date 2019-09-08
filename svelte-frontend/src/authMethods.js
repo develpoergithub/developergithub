@@ -17,7 +17,6 @@ import {
 let tokenRefreshTimeout;
 
 async function tokenRefresh(client, oldToken) {
-  console.log("At token refresh");
   try {
     await mutate(client, {
       mutation: REFRESH_TOKEN,

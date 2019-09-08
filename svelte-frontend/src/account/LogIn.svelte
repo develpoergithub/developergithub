@@ -29,7 +29,10 @@
     }
 
     try {
-      await login(client, email, password, isKeepMeLoggedIn);
+      await login(client, email, password, isKeepMeLoggedIn).then(() => {
+        tokenRefreshTimeoutFunc(client);
+        push("/dashboard/");
+      });
     } catch (error) {
       // console.log(error);
       password = "";

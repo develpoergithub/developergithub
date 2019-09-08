@@ -4,7 +4,7 @@
 
 <script>
   import { onMount, afterUpdate, beforeUpdate, setContext } from "svelte";
-  import Router, { push, pop, replace } from "svelte-spa-router";
+  import Router, { push, pop, replace, location } from "svelte-spa-router";
   import { routes } from "./Routes.svelte";
   import Header from "./Header.svelte";
   import ApolloClient from "apollo-boost";
@@ -25,8 +25,8 @@
   import Noto, { notifications } from "./Noto.svelte";
 
   const client = new ApolloClient({
-    // uri: "http://localhost:8000/graphql"
-    uri: "https://swapboard.herokuapp.com/graphql"
+    uri: "http://localhost:8000/graphql"
+    // uri: "https://swapboard.herokuapp.com/graphql"
   });
 
   setClient(client);
@@ -41,6 +41,7 @@
     if (event.key == "login-event") {
       setTimeout(() => {
         isLoggedIn.set(true);
+        push("/dashboard/");
       }, Math.random() * (2000 - 1000) + 1000);
       // localStorage.removeItem("login-event");
     } else if (event.key == "logout-event") {
@@ -77,21 +78,25 @@
     }
   });
 
-  onMount(() => {
-    if ($keepMeLoggedIn === true && $isLoggedIn === false) {
-      isLoggedIn.set(true);
-    } else {
-      localStorage.setItem("new-tab-event", "newtab" + Math.random());
-    }
-  });
-
-  $: if ($isLoggedIn === true) {
+  if ($keepMeLoggedIn === true || $isLoggedIn === true) {
+    isLoggedIn.set(true);
     tokenRefreshTimeoutFunc(client);
-    push("/dashboard/");
   } else {
-    clearTokenRefreshTimeout();
-    push("/login");
+    localStorage.setItem("new-tab-event", "newtab" + Math.random());
   }
+
+  $: if ($isLoggedIn === false) {
+    // tokenRefreshTimeoutFunc(client);
+    // if (!$location.includes("/confirminvitation/")) {
+    //   push("/dashboard/");
+    // }
+    clearTokenRefreshTimeout();
+    if (!$location.includes("/confirminvitation/")) {
+      push("/login");
+    }
+  }
+
+  onMount(() => {});
 </script>
 
 <style>

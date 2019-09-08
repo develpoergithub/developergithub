@@ -6,6 +6,7 @@
   import RecoverAccount from "./account/RecoverAccount.svelte";
   import VerifyAccount from "./account/VerifyAccount.svelte";
   import DashBoard from "./dashboard/DashBoard.svelte";
+  import ConfirmInvitation from "./ConfirmInvitation.svelte";
   import NotFound from "./NotFound.svelte";
 
   export const routes = {
@@ -16,6 +17,7 @@
     "/forgotpassword": ForgotPassword,
     "/recoveraccount": RecoverAccount,
     "/dashboard/*": DashBoard,
+    "/confirminvitation/:id": ConfirmInvitation,
     "*": NotFound
   };
 </script>

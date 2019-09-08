@@ -30,6 +30,19 @@
     {#if $isLoggedIn}
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ml-auto">
+          {#if $user.isCompany}
+            <li class="nav-item">
+              <a class="nav-link" href="#/dashboard/invite">Invite Employee</a>
+            </li>
+          {/if}
+          {#if !$user.isCompany}
+            <li class="nav-item">
+              <a class="nav-link" href="#/dashboard/shifts">Shifts</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#/dashboard/invitations">Invitations</a>
+            </li>
+          {/if}
           <li class="nav-item dropdown">
             <a
               class="nav-link dropdown-toggle"
@@ -44,11 +57,9 @@
             <div class="dropdown-menu" aria-labelledby="navbarDropdown">
               <a class="dropdown-item" href="#/">Profile</a>
               <div class="dropdown-divider" />
-              {#if $isLoggedIn}
-                <a on:click={handleLogout} class="dropdown-item" href="#/">
-                  Logout
-                </a>
-              {/if}
+              <a on:click={handleLogout} class="dropdown-item" href="#/">
+                Logout
+              </a>
             </div>
           </li>
         </ul>

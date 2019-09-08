@@ -75,34 +75,35 @@ class CreateUserConnection(graphene.Mutation):
     user_connection = graphene.Field(UserConnectionType)
 
     class Arguments:
-        company_id = graphene.ID()
+        employee_email = graphene.String(required=True)
 
     @login_required
-    def mutate(self, info, company_id):
+    def mutate(self, info, employee_email):
 
-        try:
-            company = User.objects.get(id=company_id)
-        except User.DoesNotExist:
-            raise Exception("CAN NOT Resolve the Company from id")
+        # try:
+        #     employee = User.objects.get(email=employee_email)
+        # except User.DoesNotExist:
+        #     raise Exception("CAN NOT Resolve the Employee from id")
 
-        if not company.is_company:
-            raise Exception(
-                "The Requested to UserConnection must be a Company")
+        # if not company.is_company:
+        #     raise Exception(
+        #         "The Requested to UserConnection must be a Company")
 
         user = info.context.user
-        if user.is_company:
-            raise Exception("A Company Can not Initiate a UserConnection")
+        if not user.is_company:
+            raise Exception("An Employee Can not Initiate a UserConnection")
 
         try:
             user_connection = UserConnection.objects.get(
-                company=company, employee=user)
+                company=user, employee_email=employee_email)
+            # user_connection.save()
             return CreateUserConnection(user_connection=user_connection)
             # raise Exception("The Requested Connection already exist!")
         except UserConnection.DoesNotExist:
             pass
 
         user_connection = UserConnection(
-            employee=info.context.user, company=company, is_confirmed=False
+            company=info.context.user, employee_email=employee_email, is_confirmed=False
         )
 
         user_connection.save()
@@ -119,21 +120,25 @@ class ConfirmUserConnection(graphene.Mutation):
     @login_required
     def mutate(self, info, user_connection_id):
 
-        if not info.context.user.is_company:
-            raise Exception("User Must be a Company to Perform this Operation")
-
-        user_connection = UserConnection.objects.get(id=user_connection_id)
-        user_connection.is_confirmed = True
-        user_connection.save()
-
-        return ConfirmUserConnection(user_connection=user_connection)
+        if info.context.user.is_company:
+            raise Exception(
+                "User Must be an Employee to Perform this Operation")
+        try:
+            user_connection = UserConnection.objects.get(id=user_connection_id)
+            user_connection.employee = info.context.user
+            user_connection.is_confirmed = True
+            user_connection.save()
+            return ConfirmUserConnection(user_connection=user_connection)
+        except UserConnection.DoesNotExist:
+            raise Exception("Please make sure you passed in a valid ID!")
 
 
 class UserQuery(graphene.ObjectType):
     me = graphene.Field(UserType)
     users = graphene.List(UserType)
     all_user_connections = graphene.List(UserConnectionType)
-    user_connections = graphene.List(UserConnectionType)
+    invitations = graphene.List(UserConnectionType)
+    connections = graphene.List(UserConnectionType)
 
     def resolve_me(self, info):
         user = info.context.user
@@ -142,10 +147,23 @@ class UserQuery(graphene.ObjectType):
         return user
 
     @login_required
-    def resolve_user_connections(self, info):
+    def resolve_invitations(self, info):
         if info.context.user.is_company:
             return UserConnection.objects.filter(company=info.context.user)
-        elif info.context.user.is_company == False:
+        elif not info.context.user.is_company:
+            result = []
+            invites = UserConnection.objects.filter(
+                employee_email=info.context.user.email)
+            for item in invites:
+                if not item.is_confirmed and not item.is_declined:
+                    result.append(item)
+            return result
+
+    @login_required
+    def resolve_connections(self, info):
+        if info.context.user.is_company:
+            return UserConnection.objects.filter(company=info.context.user)
+        else:
             return UserConnection.objects.filter(employee=info.context.user)
 
     # Not Secured, For Testing Only!

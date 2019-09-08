@@ -5,3 +5,6 @@ export const keepMeLoggedIn = writable(false);
 export const lastLoggedIn = writable(Number);
 export const refreshToken = writable("");
 export const user = writable({});
+export const invitations = writable([]);
+export const connections = writable([]);
+export const shifts = writable([]);

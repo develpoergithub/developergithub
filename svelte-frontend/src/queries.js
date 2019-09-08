@@ -1,4 +1,4 @@
-import { gql } from 'apollo-boost';
+import { gql } from "apollo-boost";
 
 export const CREATE_USER = gql`
   mutation(
@@ -56,6 +56,98 @@ export const REFRESH_TOKEN = gql`
       token
       refreshToken
       payload
+    }
+  }
+`;
+
+export const SEND_INVITATION = gql`
+  mutation($employeeEmail: String!) {
+    createUserConnection(employeeEmail: $employeeEmail) {
+      userConnection {
+        id
+        employeeEmail
+        company {
+          id
+          email
+        }
+        isConfirmed
+      }
+    }
+  }
+`;
+
+export const GET_INVITATIONS = gql`
+  query {
+    invitations {
+      id
+      isConfirmed
+      employeeEmail
+      company {
+        userprofile {
+          companyName
+        }
+      }
+      created
+    }
+  }
+`;
+
+export const CONFIRM_INVITATION = gql`
+  mutation($invitationId: ID!) {
+    confirmUserConnection(userConnectionId: $invitationId) {
+      userConnection {
+        id
+        isConfirmed
+        employeeEmail
+        company {
+          userprofile {
+            companyName
+          }
+        }
+        created
+      }
+    }
+  }
+`;
+
+export const GET_CONNECTIONS = gql`
+  query {
+    connections {
+      id
+      created
+      company {
+        id
+        userprofile {
+          companyName
+        }
+      }
+      employee {
+        id
+        userprofile {
+          firstName
+          lastName
+        }
+      }
+    }
+  }
+`;
+
+export const GET_SHIFTS = gql`
+  query($companyId: ID!) {
+    shifts(companyId: $companyId) {
+      id
+      fromTime
+      toTime
+      note
+      isSponsored
+      postedBy {
+        id
+        email
+      }
+      postedTo {
+        id
+        email
+      }
     }
   }
 `;

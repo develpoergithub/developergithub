@@ -1,7 +1,10 @@
 <script context="module">
-  import MyShifts from "./dashboard/MyShifts.svelte";
-
+  import InviteEmployee from "./dashboard/InviteEmployee.svelte";
+  import Invitations from "./dashboard/Invitations.svelte";
+  import Shifts from "./dashboard/Shifts.svelte";
   export const routes = {
-    "/dashboard/myshifts": MyShifts
+    "/dashboard/invite": InviteEmployee,
+    "/dashboard/invitations": Invitations,
+    "/dashboard/shifts": Shifts
   };
 </script>
