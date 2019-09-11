@@ -9,6 +9,10 @@ def index(request):
     return render(request, "frontend/index.html")
 
 
+def graphiql(request):
+    return render(request, "frontend/graphiql.html")
+
+
 def error_404_view(request, exception):
     current_path = request.get_full_path()
     return redirect("/#" + current_path)

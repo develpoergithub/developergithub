@@ -7,7 +7,14 @@
   import Router, { push, pop, replace, location } from "svelte-spa-router";
   import { routes } from "./Routes.svelte";
   import Header from "./Header.svelte";
-  import ApolloClient from "apollo-boost";
+  import { ApolloClient } from "apollo-client";
+  import { InMemoryCache } from "apollo-cache-inmemory";
+  import { HttpLink } from "apollo-link-http";
+  import { WebSocketLink } from "apollo-link-ws";
+  import { getMainDefinition } from "apollo-utilities";
+  import { onError } from "apollo-link-error";
+  import { split } from "apollo-link";
+  import { SubscriptionClient } from "subscriptions-transport-ws";
   import { setClient, getClient, query, mutate } from "svelte-apollo";
   import {
     keepMeLoggedIn,
@@ -24,9 +31,42 @@
   } from "./authMethods.js";
   import Noto, { notifications } from "./Noto.svelte";
 
+  const HTTP_GRAPHQL_ENDPOINT =
+    (window.location.protocol === "https" ? "https" : "http") +
+    "://" +
+    window.location.host +
+    "/graphql";
+
+  const WS_GRAPHQL_ENDPOINT =
+    (window.location.protocol === "https" ? "wss" : "ws") +
+    "://" +
+    window.location.host +
+    "/graphql";
+
+  const httpLink = new HttpLink({
+    uri: HTTP_GRAPHQL_ENDPOINT
+    // credentials: 'same-origin'
+  });
+
+  const wsLink = new WebSocketLink({
+    uri: WS_GRAPHQL_ENDPOINT,
+    options: {
+      reconnect: true
+    }
+  });
+
+  const link = split(
+    ({ query }) => {
+      const { kind, operation } = getMainDefinition(query);
+      return kind === "OperationDefinition" && operation === "subscription";
+    },
+    wsLink,
+    httpLink
+  );
+
   const client = new ApolloClient({
-    uri: "http://localhost:8000/graphql"
-    // uri: "https://swapboard.herokuapp.com/graphql"
+    link,
+    cache: new InMemoryCache()
   });
 
   setClient(client);
@@ -57,7 +97,11 @@
         // localStorage.removeItem("new-tab-event");
       }
     } else if (event.key == "currently-logged-in-event") {
-      isLoggedIn.set(true);
+      if ($isLoggedIn === false) {
+        isLoggedIn.set(true);
+        push("/dashboard/");
+        tokenRefreshTimeoutFunc(client);
+      }
       // localStorage.removeItem("currently-logged-in-event");
     } else if (event.key == "start-timeout-event") {
       setTimeout(() => {
@@ -78,8 +122,10 @@
     }
   });
 
-  if ($keepMeLoggedIn === true || $isLoggedIn === true) {
+  if ($keepMeLoggedIn === true && $isLoggedIn === false) {
     isLoggedIn.set(true);
+    tokenRefreshTimeoutFunc(client);
+  } else if ($isLoggedIn === true) {
     tokenRefreshTimeoutFunc(client);
   } else {
     localStorage.setItem("new-tab-event", "newtab" + Math.random());
@@ -91,12 +137,8 @@
     //   push("/dashboard/");
     // }
     clearTokenRefreshTimeout();
-    if (!$location.includes("/confirminvitation/")) {
-      push("/login");
-    }
+    push("/login");
   }
-
-  onMount(() => {});
 </script>
 
 <style>

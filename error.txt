@@ -204,3 +204,123 @@ You're accessing the development server over HTTPS, but it only supports HTTP.
 
 You're accessing the development server over HTTPS, but it only supports HTTP.
 
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.14, 127.0.0.1:60895]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.16, 127.0.0.1:61791]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.23, 127.0.0.1:62300]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.17, 127.0.0.1:61504]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.14, 127.0.0.1:61504]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.08, 127.0.0.1:62097]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.13, 127.0.0.1:62151]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.08, 127.0.0.1:62184]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.08, 127.0.0.1:62205]
+Internal Server Error: /graphql
+Traceback (most recent call last):
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\exception.py", line 34, in inner
+    response = get_response(request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 115, in _get_response
+    response = self.process_exception_by_middleware(e, request)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\django\core\handlers\base.py", line 113, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\Users\marti\.virtualenvs\swapboard-IYPPdz8a\lib\site-packages\graphql_jwt\decorators.py", line 136, in wrapped_view
+    expires = refresh_token.created +\
+AttributeError: '__proxy__' object has no attribute 'created'
+HTTP POST /graphql 500 [0.08, 127.0.0.1:62205]

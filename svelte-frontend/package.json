@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "devDependencies": {
     "apollo-boost": "0.4.3",
-    "apollo-client": "^2.4.0",
+    "apollo-client": "^2.6.4",
     "eslint": "^6.1.0",
     "eslint-config-standard": "^13.0.1",
     "eslint-plugin-import": "^2.18.2",
@@ -26,7 +26,14 @@
   },
   "dependencies": {
     "apollo-boost": "^0.4.3",
+    "apollo-cache-inmemory": "^1.6.3",
+    "apollo-link": "^1.2.13",
+    "apollo-link-error": "^1.1.12",
+    "apollo-link-http": "^1.5.16",
+    "apollo-link-ws": "^1.0.19",
+    "graphql-tag": "^2.10.1",
     "sirv-cli": "^0.4.4",
+    "subscriptions-transport-ws": "^0.9.16",
     "svelte-apollo": "^0.3.0",
     "svelte-spa-router": "^1.1.3"
   },

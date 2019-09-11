@@ -50,7 +50,9 @@ Rx = "==1.6.1"
 python-dotenv = "*"
 django-anymail = {extras = ["mailgun"],version = "*"}
 django-reset-migrations = "*"
-django-graphql-jwt = "*"
+django-graphql-jwt = "==0.2.1"
+channels = "*"
+django-channels-graphql-ws = "*"
 
 [requires]
 python_version = "3.7"

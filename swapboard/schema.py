@@ -1,8 +1,10 @@
 import graphene
 import graphql_jwt
+import channels_graphql_ws
 from account.schema import (
     CreateUser,
     ActivateUser,
+    ObtainJSONWebToken,
     CreateUserConnection,
     ConfirmUserConnection,
     UserQuery,
@@ -25,7 +27,7 @@ class RootQuery(UserQuery, UserProfileQuery, ShiftQuery, graphene.ObjectType):
 
 
 class Mutation(graphene.ObjectType):
-    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
+    token_auth = ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
     revoke_token = graphql_jwt.Revoke.Field()
@@ -39,4 +41,7 @@ class Mutation(graphene.ObjectType):
     confirm_shift_connection = ConfirmShiftConnection.Field()
 
 
-schema = graphene.Schema(query=RootQuery, mutation=Mutation)
+schema = graphene.Schema(
+    query=RootQuery,
+    mutation=Mutation,
+)

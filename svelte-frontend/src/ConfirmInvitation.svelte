@@ -12,13 +12,26 @@
 
   let label = "Confirming invitation, please wait...";
 
-  setTimeout(() => {
-    if ($isLoggedIn === false) {
-      push("/login");
-    } else {
-      confirmInvitation();
-    }
-  }, 5000);
+  function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function waitToNotify(ms) {
+    await timeout(ms);
+  }
+
+  async function pushToLogin(ms, msg) {
+    notifications.danger(msg, ms - ms * 0.15);
+    await waitToNotify(ms);
+    push("/login");
+  }
+
+  if ($isLoggedIn === false) {
+    msg = "You are not Logged in, redirecting to the log in page...";
+    pushToLogin(4000, msg);
+  } else {
+    confirmInvitation();
+  }
 
   async function confirmInvitation() {
     try {
@@ -40,7 +53,11 @@
       });
     } catch (error) {
       console.log(error);
-      push("/dashboard/");
+      label = "An error occurred";
+      notifications.danger(label, 1500);
+      setTimeout(() => {
+        push("/dashboard/");
+      }, 1800);
     }
   }
   console.log(params.id);

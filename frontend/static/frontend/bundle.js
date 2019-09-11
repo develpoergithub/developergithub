@@ -2907,6 +2907,8 @@ var app = (function () {
     }
     //# sourceMappingURL=svelte-apollo.es.js.map
 
+    var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
     function unwrapExports (x) {
     	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
     }
@@ -4107,6 +4109,7 @@ var app = (function () {
                 queryManager.startPollingQuery(this.options, queryId);
             }
             var onError = function (error) {
+                _this.updateLastResult(__assign({}, _this.lastResult, { errors: error.graphQLErrors, networkStatus: NetworkStatus.error, loading: false }));
                 iterateObserversSafely(_this.observers, 'error', _this.lastError = error);
             };
             queryManager.observeQuery(queryId, this.options, {
@@ -4385,7 +4388,7 @@ var app = (function () {
                         return cache.config.dataIdFromObject(obj);
                     }
                     else {
-                        process.env.NODE_ENV === "production" ? invariant(false, 17) : invariant(false, 'To use context.getCacheKey, you need to use a cache that has ' +
+                        process.env.NODE_ENV === "production" ? invariant(false, 6) : invariant(false, 'To use context.getCacheKey, you need to use a cache that has ' +
                             'a configurable dataIdFromObject, like apollo-cache-inmemory.');
                     }
                 } });
@@ -4493,7 +4496,7 @@ var app = (function () {
                             }
                             else {
                                 fragment = fragmentMap[selection.name.value];
-                                process.env.NODE_ENV === "production" ? invariant(fragment, 18) : invariant(fragment, "No fragment named " + selection.name.value);
+                                process.env.NODE_ENV === "production" ? invariant(fragment, 7) : invariant(fragment, "No fragment named " + selection.name.value);
                             }
                             if (fragment && fragment.typeCondition) {
                                 typeCondition = fragment.typeCondition.name.value;
@@ -4666,7 +4669,7 @@ var app = (function () {
                 _this.stopQueryNoBroadcast(queryId);
             });
             this.fetchQueryRejectFns.forEach(function (reject) {
-                reject(process.env.NODE_ENV === "production" ? new InvariantError(6) : new InvariantError('QueryManager stopped while query was in flight'));
+                reject(process.env.NODE_ENV === "production" ? new InvariantError(8) : new InvariantError('QueryManager stopped while query was in flight'));
             });
         };
         QueryManager.prototype.mutate = function (_a) {
@@ -4677,8 +4680,8 @@ var app = (function () {
                 return __generator(this, function (_f) {
                     switch (_f.label) {
                         case 0:
-                            process.env.NODE_ENV === "production" ? invariant(mutation, 7) : invariant(mutation, 'mutation option is required. You must specify your GraphQL document in the mutation option.');
-                            process.env.NODE_ENV === "production" ? invariant(!fetchPolicy || fetchPolicy === 'no-cache', 8) : invariant(!fetchPolicy || fetchPolicy === 'no-cache', "fetchPolicy for mutations currently only supports the 'no-cache' policy");
+                            process.env.NODE_ENV === "production" ? invariant(mutation, 9) : invariant(mutation, 'mutation option is required. You must specify your GraphQL document in the mutation option.');
+                            process.env.NODE_ENV === "production" ? invariant(!fetchPolicy || fetchPolicy === 'no-cache', 10) : invariant(!fetchPolicy || fetchPolicy === 'no-cache', "fetchPolicy for mutations currently only supports the 'no-cache' policy");
                             mutationId = this.generateQueryId();
                             mutation = this.transform(mutation).document;
                             this.setQuery(mutationId, function () { return ({ document: mutation }); });
@@ -5055,7 +5058,7 @@ var app = (function () {
         };
         QueryManager.prototype.watchQuery = function (options, shouldSubscribe) {
             if (shouldSubscribe === void 0) { shouldSubscribe = true; }
-            process.env.NODE_ENV === "production" ? invariant(options.fetchPolicy !== 'standby', 9) : invariant(options.fetchPolicy !== 'standby', 'client.watchQuery cannot be called with fetchPolicy set to "standby"');
+            process.env.NODE_ENV === "production" ? invariant(options.fetchPolicy !== 'standby', 11) : invariant(options.fetchPolicy !== 'standby', 'client.watchQuery cannot be called with fetchPolicy set to "standby"');
             options.variables = this.getVariables(options.query, options.variables);
             if (typeof options.notifyOnNetworkStatusChange === 'undefined') {
                 options.notifyOnNetworkStatusChange = false;
@@ -5069,11 +5072,11 @@ var app = (function () {
         };
         QueryManager.prototype.query = function (options) {
             var _this = this;
-            process.env.NODE_ENV === "production" ? invariant(options.query, 10) : invariant(options.query, 'query option is required. You must specify your GraphQL document ' +
+            process.env.NODE_ENV === "production" ? invariant(options.query, 12) : invariant(options.query, 'query option is required. You must specify your GraphQL document ' +
                 'in the query option.');
-            process.env.NODE_ENV === "production" ? invariant(options.query.kind === 'Document', 11) : invariant(options.query.kind === 'Document', 'You must wrap the query string in a "gql" tag.');
-            process.env.NODE_ENV === "production" ? invariant(!options.returnPartialData, 12) : invariant(!options.returnPartialData, 'returnPartialData option only supported on watchQuery.');
-            process.env.NODE_ENV === "production" ? invariant(!options.pollInterval, 13) : invariant(!options.pollInterval, 'pollInterval option only supported on watchQuery.');
+            process.env.NODE_ENV === "production" ? invariant(options.query.kind === 'Document', 13) : invariant(options.query.kind === 'Document', 'You must wrap the query string in a "gql" tag.');
+            process.env.NODE_ENV === "production" ? invariant(!options.returnPartialData, 14) : invariant(!options.returnPartialData, 'returnPartialData option only supported on watchQuery.');
+            process.env.NODE_ENV === "production" ? invariant(!options.pollInterval, 15) : invariant(!options.pollInterval, 'pollInterval option only supported on watchQuery.');
             return new Promise(function (resolve, reject) {
                 var watchedQuery = _this.watchQuery(options, false);
                 _this.fetchQueryRejectFns.set("query:" + watchedQuery.queryId, reject);
@@ -5141,7 +5144,7 @@ var app = (function () {
         };
         QueryManager.prototype.clearStore = function () {
             this.fetchQueryRejectFns.forEach(function (reject) {
-                reject(process.env.NODE_ENV === "production" ? new InvariantError(14) : new InvariantError('Store reset while query was in flight (not completed in link chain)'));
+                reject(process.env.NODE_ENV === "production" ? new InvariantError(16) : new InvariantError('Store reset while query was in flight (not completed in link chain)'));
             });
             var resetIds = [];
             this.queries.forEach(function (_a, queryId) {
@@ -5260,7 +5263,7 @@ var app = (function () {
             var observableQuery;
             if (typeof queryIdOrObservable === 'string') {
                 var foundObserveableQuery = this.getQuery(queryIdOrObservable).observableQuery;
-                process.env.NODE_ENV === "production" ? invariant(foundObserveableQuery, 15) : invariant(foundObserveableQuery, "ObservableQuery with this id doesn't exist: " + queryIdOrObservable);
+                process.env.NODE_ENV === "production" ? invariant(foundObserveableQuery, 17) : invariant(foundObserveableQuery, "ObservableQuery with this id doesn't exist: " + queryIdOrObservable);
                 observableQuery = foundObserveableQuery;
             }
             else {
@@ -5449,7 +5452,7 @@ var app = (function () {
         QueryManager.prototype.startPollingQuery = function (options, queryId, listener) {
             var _this = this;
             var pollInterval = options.pollInterval;
-            process.env.NODE_ENV === "production" ? invariant(pollInterval, 16) : invariant(pollInterval, 'Attempted to start a polling query without a polling interval.');
+            process.env.NODE_ENV === "production" ? invariant(pollInterval, 18) : invariant(pollInterval, 'Attempted to start a polling query without a polling interval.');
             if (!this.ssrMode) {
                 var info = this.pollingInfoByQueryId.get(queryId);
                 if (!info) {
@@ -5616,7 +5619,7 @@ var app = (function () {
         return DataStore;
     }());
 
-    var version = "2.6.3";
+    var version = "2.6.4";
 
     var hasSuggestedDevtools = false;
     var ApolloClient = (function () {
@@ -6224,7 +6227,6 @@ var app = (function () {
 
     var parentEntrySlot = new Slot();
 
-    var UNKNOWN_VALUE = Object.create(null);
     var reusableEmptyArray = [];
     var emptySetPool = [];
     var POOL_TARGET_SIZE = 100;
@@ -6234,6 +6236,26 @@ var app = (function () {
         if (!condition) {
             throw new Error(optionalMessage || "assertion failure");
         }
+    }
+    function valueIs(a, b) {
+        var len = a.length;
+        return (
+        // Unknown values are not equal to each other.
+        len > 0 &&
+            // Both values must be ordinary (or both exceptional) to be equal.
+            len === b.length &&
+            // The underlying value or exception must be the same.
+            a[len - 1] === b[len - 1]);
+    }
+    function valueGet(value) {
+        switch (value.length) {
+            case 0: throw new Error("unknown value");
+            case 1: return value[0];
+            case 2: throw value[1];
+        }
+    }
+    function valueCopy(value) {
+        return value.slice(0);
     }
     var Entry = /** @class */ (function () {
         function Entry(fn, args) {
@@ -6247,23 +6269,32 @@ var app = (function () {
             this.dirtyChildren = null;
             this.dirty = true;
             this.recomputing = false;
-            this.value = UNKNOWN_VALUE;
+            this.value = [];
             ++Entry.count;
         }
+        // This is the most important method of the Entry API, because it
+        // determines whether the cached this.value can be returned immediately,
+        // or must be recomputed. The overall performance of the caching system
+        // depends on the truth of the following observations: (1) this.dirty is
+        // usually false, (2) this.dirtyChildren is usually null/empty, and thus
+        // (3) valueGet(this.value) is usually returned without recomputation.
         Entry.prototype.recompute = function () {
+            assert(!this.recomputing, "already recomputing");
             if (!rememberParent(this) && maybeReportOrphan(this)) {
                 // The recipient of the entry.reportOrphan callback decided to dispose
                 // of this orphan entry by calling entry.dispose(), so we don't need to
                 // (and should not) proceed with the recomputation.
                 return void 0;
             }
-            return recomputeIfDirty(this);
+            return mightBeDirty(this)
+                ? reallyRecompute(this)
+                : valueGet(this.value);
         };
         Entry.prototype.setDirty = function () {
             if (this.dirty)
                 return;
             this.dirty = true;
-            this.value = UNKNOWN_VALUE;
+            this.value.length = 0;
             reportDirty(this);
             // We can go ahead and unsubscribe here, since any further dirty
             // notifications we receive will be redundant, and unsubscribing may
@@ -6298,7 +6329,7 @@ var app = (function () {
         if (parent) {
             child.parents.add(parent);
             if (!parent.childValues.has(child)) {
-                parent.childValues.set(child, UNKNOWN_VALUE);
+                parent.childValues.set(child, []);
             }
             if (mightBeDirty(child)) {
                 reportDirtyChild(parent, child);
@@ -6309,73 +6340,38 @@ var app = (function () {
             return parent;
         }
     }
-    // This is the most important method of the Entry API, because it
-    // determines whether the cached entry.value can be returned immediately,
-    // or must be recomputed. The overall performance of the caching system
-    // depends on the truth of the following observations: (1) this.dirty is
-    // usually false, (2) this.dirtyChildren is usually null/empty, and thus
-    // (3) this.value is usally returned very quickly, without recomputation.
-    function recomputeIfDirty(entry) {
-        if (entry.dirty) {
-            // If this Entry is explicitly dirty because someone called
-            // entry.setDirty(), recompute.
-            return reallyRecompute(entry);
-        }
-        if (mightBeDirty(entry)) {
-            // Get fresh values for any dirty children, and if those values
-            // disagree with this.childValues, mark this Entry explicitly dirty.
-            entry.dirtyChildren.forEach(function (child) {
-                assert(entry.childValues.has(child));
-                try {
-                    recomputeIfDirty(child);
-                }
-                catch (e) {
-                    entry.setDirty();
-                }
-            });
-            if (entry.dirty) {
-                // If this Entry has become explicitly dirty after comparing the fresh
-                // values of its dirty children against this.childValues, recompute.
-                return reallyRecompute(entry);
-            }
-        }
-        assert(entry.value !== UNKNOWN_VALUE);
-        return entry.value;
-    }
     function reallyRecompute(entry) {
-        assert(!entry.recomputing, "already recomputing");
-        entry.recomputing = true;
         // Since this recomputation is likely to re-remember some of this
         // entry's children, we forget our children here but do not call
         // maybeReportOrphan until after the recomputation finishes.
         var originalChildren = forgetChildren(entry);
-        var threw = true;
-        try {
-            parentEntrySlot.withValue(entry, function () {
-                entry.value = entry.fn.apply(null, entry.args);
-            });
-            threw = false;
-        }
-        finally {
-            entry.recomputing = false;
-            if (threw || !maybeSubscribe(entry)) {
-                // Mark this Entry dirty if entry.fn threw or we failed to
-                // resubscribe. This is important because, if we have a subscribe
-                // function and it failed, then we're going to miss important
-                // notifications about the potential dirtiness of entry.value.
-                entry.setDirty();
-            }
-            else {
-                // If we successfully recomputed entry.value and did not fail to
-                // (re)subscribe, then this Entry is no longer explicitly dirty.
-                setClean(entry);
-            }
+        // Set entry as the parent entry while calling recomputeNewValue(entry).
+        parentEntrySlot.withValue(entry, recomputeNewValue, [entry]);
+        if (maybeSubscribe(entry)) {
+            // If we successfully recomputed entry.value and did not fail to
+            // (re)subscribe, then this Entry is no longer explicitly dirty.
+            setClean(entry);
         }
         // Now that we've had a chance to re-remember any children that were
         // involved in the recomputation, we can safely report any orphan
         // children that remain.
         originalChildren.forEach(maybeReportOrphan);
-        return entry.value;
+        return valueGet(entry.value);
+    }
+    function recomputeNewValue(entry) {
+        entry.recomputing = true;
+        // Set entry.value as unknown.
+        entry.value.length = 0;
+        try {
+            // If entry.fn succeeds, entry.value will become a normal Value.
+            entry.value[0] = entry.fn.apply(null, entry.args);
+        }
+        catch (e) {
+            // If entry.fn throws, entry.value will become exceptional.
+            entry.value[1] = e;
+        }
+        // Either way, this line is always reached.
+        entry.recomputing = false;
     }
     function mightBeDirty(entry) {
         return entry.dirty || !!(entry.dirtyChildren && entry.dirtyChildren.size);
@@ -6420,10 +6416,10 @@ var app = (function () {
         assert(parent.childValues.has(child));
         assert(!mightBeDirty(child));
         var childValue = parent.childValues.get(child);
-        if (childValue === UNKNOWN_VALUE) {
-            parent.childValues.set(child, child.value);
+        if (childValue.length === 0) {
+            parent.childValues.set(child, valueCopy(child.value));
         }
-        else if (childValue !== child.value) {
+        else if (!valueIs(childValue, child.value)) {
             parent.setDirty();
         }
         removeDirtyChild(parent, child);
@@ -6460,7 +6456,7 @@ var app = (function () {
         var children = reusableEmptyArray;
         if (parent.childValues.size > 0) {
             children = [];
-            parent.childValues.forEach(function (value, child) {
+            parent.childValues.forEach(function (_value, child) {
                 forgetChild(parent, child);
                 children.push(child);
             });
@@ -6558,6 +6554,7 @@ var app = (function () {
         }
         return keyTrie.lookupArray(args);
     }
+    var caches = new Set();
     function wrap(originalFunction, options) {
         if (options === void 0) { options = Object.create(null); }
         var cache = new Cache(options.max || Math.pow(2, 16), function (entry) { return entry.dispose(); });
@@ -6593,11 +6590,13 @@ var app = (function () {
             // Move this entry to the front of the least-recently used queue,
             // since we just finished computing its value.
             cache.set(key, entry);
+            caches.add(cache);
             // Clean up any excess entries in the cache, but only if there is no
             // active parent entry, meaning we're not in the middle of a larger
             // computation that might be flummoxed by the cleaning.
             if (!parentEntrySlot.hasValue()) {
-                cache.clean();
+                caches.forEach(function (cache) { return cache.clean(); });
+                caches.clear();
             }
             // If options.disposable is truthy, the caller of wrap is telling us
             // they don't care about the result of entry.recompute(), so we should
@@ -6614,53 +6613,6 @@ var app = (function () {
         return optimistic;
     }
     //# sourceMappingURL=bundle.esm.js.map
-
-    var testMap = new Map();
-    if (testMap.set(1, 2) !== testMap) {
-        var set_1 = testMap.set;
-        Map.prototype.set = function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            set_1.apply(this, args);
-            return this;
-        };
-    }
-    var testSet = new Set();
-    if (testSet.add(3) !== testSet) {
-        var add_1 = testSet.add;
-        Set.prototype.add = function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i] = arguments[_i];
-            }
-            add_1.apply(this, args);
-            return this;
-        };
-    }
-    var frozen = {};
-    if (typeof Object.freeze === 'function') {
-        Object.freeze(frozen);
-    }
-    try {
-        testMap.set(frozen, frozen).delete(frozen);
-    }
-    catch (_a) {
-        var wrap$1 = function (method) {
-            return method && (function (obj) {
-                try {
-                    testMap.set(obj, obj).delete(obj);
-                }
-                finally {
-                    return method.call(Object, obj);
-                }
-            });
-        };
-        Object.freeze = wrap$1(Object.freeze);
-        Object.seal = wrap$1(Object.seal);
-        Object.preventExtensions = wrap$1(Object.preventExtensions);
-    }
 
     var haveWarned = false;
     function shouldWarn() {
@@ -6720,7 +6672,7 @@ var app = (function () {
                 disposable: true,
                 makeCacheKey: function (dataId) {
                     return dataId;
-                }
+                },
             });
         }
         DepTrackingCache.prototype.toObject = function () {
@@ -6808,8 +6760,7 @@ var app = (function () {
             });
         }
         StoreReader.prototype.readQueryFromStore = function (options) {
-            var optsPatch = { returnPartialData: false };
-            return this.diffQueryAgainstStore(__assign({}, options, optsPatch)).result;
+            return this.diffQueryAgainstStore(__assign({}, options, { returnPartialData: false })).result;
         };
         StoreReader.prototype.diffQueryAgainstStore = function (_a) {
             var store = _a.store, query = _a.query, variables = _a.variables, previousResult = _a.previousResult, _b = _a.returnPartialData, returnPartialData = _b === void 0 ? true : _b, _c = _a.rootId, rootId = _c === void 0 ? 'ROOT_QUERY' : _c, fragmentMatcherFunction = _a.fragmentMatcherFunction, config = _a.config;
@@ -6817,7 +6768,7 @@ var app = (function () {
             variables = assign({}, getDefaultValues(queryDefinition), variables);
             var context = {
                 store: store,
-                dataIdFromObject: (config && config.dataIdFromObject) || null,
+                dataIdFromObject: config && config.dataIdFromObject,
                 cacheRedirects: (config && config.cacheRedirects) || {},
             };
             var execResult = this.executeStoreQuery({
@@ -6837,7 +6788,7 @@ var app = (function () {
                 execResult.missing.forEach(function (info) {
                     if (info.tolerable)
                         return;
-                    throw process.env.NODE_ENV === "production" ? new InvariantError(2) : new InvariantError("Can't find field " + info.fieldName + " on object " + JSON.stringify(info.object, null, 2) + ".");
+                    throw process.env.NODE_ENV === "production" ? new InvariantError(8) : new InvariantError("Can't find field " + info.fieldName + " on object " + JSON.stringify(info.object, null, 2) + ".");
                 });
             }
             if (previousResult) {
@@ -6907,11 +6858,12 @@ var app = (function () {
                     else {
                         fragment = fragmentMap[selection.name.value];
                         if (!fragment) {
-                            throw process.env.NODE_ENV === "production" ? new InvariantError(3) : new InvariantError("No fragment named " + selection.name.value);
+                            throw process.env.NODE_ENV === "production" ? new InvariantError(9) : new InvariantError("No fragment named " + selection.name.value);
                         }
                     }
-                    var typeCondition = fragment.typeCondition.name.value;
-                    var match = execContext.fragmentMatcher(rootValue, typeCondition, contextValue);
+                    var typeCondition = fragment.typeCondition && fragment.typeCondition.name.value;
+                    var match = !typeCondition ||
+                        execContext.fragmentMatcher(rootValue, typeCondition, contextValue);
                     if (match) {
                         var fragmentExecResult = _this.executeSelectionSet({
                             selectionSet: fragment.selectionSet,
@@ -6970,7 +6922,7 @@ var app = (function () {
             for (var _i = 0; _i < arguments.length; _i++) {
                 execResults[_i] = arguments[_i];
             }
-            var missing = null;
+            var missing;
             execResults.forEach(function (execResult) {
                 if (execResult.missing) {
                     missing = missing || [];
@@ -6985,7 +6937,7 @@ var app = (function () {
         StoreReader.prototype.executeSubSelectedArray = function (_a) {
             var _this = this;
             var field = _a.field, array = _a.array, execContext = _a.execContext;
-            var missing = null;
+            var missing;
             function handleMissing(childResult) {
                 if (childResult.missing) {
                     missing = missing || [];
@@ -7023,7 +6975,7 @@ var app = (function () {
     }());
     function assertSelectionSetForIdValue(field, value) {
         if (!field.selectionSet && isIdValue(value)) {
-            throw process.env.NODE_ENV === "production" ? new InvariantError(4) : new InvariantError("Missing selection set for object of type " + value.typename + " returned for query field " + field.name.value);
+            throw process.env.NODE_ENV === "production" ? new InvariantError(10) : new InvariantError("Missing selection set for object of type " + value.typename + " returned for query field " + field.name.value);
         }
     }
     function defaultFragmentMatcher() {
@@ -7047,8 +6999,9 @@ var app = (function () {
                     if (resolver) {
                         fieldValue = resolver(object, args, {
                             getCacheKey: function (storeObj) {
-                                return toIdValue({
-                                    id: context.dataIdFromObject(storeObj),
+                                var id = context.dataIdFromObject(storeObj);
+                                return id && toIdValue({
+                                    id: id,
                                     typename: storeObj.__typename,
                                 });
                             },
@@ -7192,7 +7145,7 @@ var app = (function () {
                     }
                     else {
                         fragment = (fragmentMap || {})[selection.name.value];
-                        process.env.NODE_ENV === "production" ? invariant(fragment, 6) : invariant(fragment, "No fragment named " + selection.name.value + ".");
+                        process.env.NODE_ENV === "production" ? invariant(fragment, 2) : invariant(fragment, "No fragment named " + selection.name.value + ".");
                     }
                     var matches = true;
                     if (context.fragmentMatcherFunction && fragment.typeCondition) {
@@ -7247,7 +7200,7 @@ var app = (function () {
                 }
                 if (dataIdFromObject) {
                     var semanticId = dataIdFromObject(value);
-                    process.env.NODE_ENV === "production" ? invariant(!semanticId || !isGeneratedId(semanticId), 7) : invariant(!semanticId || !isGeneratedId(semanticId), 'IDs returned by dataIdFromObject cannot begin with the "$" character.');
+                    process.env.NODE_ENV === "production" ? invariant(!semanticId || !isGeneratedId(semanticId), 3) : invariant(!semanticId || !isGeneratedId(semanticId), 'IDs returned by dataIdFromObject cannot begin with the "$" character.');
                     if (semanticId ||
                         (typeof semanticId === 'number' && semanticId === 0)) {
                         valueDataId = semanticId;
@@ -7270,8 +7223,8 @@ var app = (function () {
                     var hadTypename = escapedId.typename !== undefined;
                     var hasTypename = typename !== undefined;
                     var typenameChanged = hadTypename && hasTypename && escapedId.typename !== typename;
-                    process.env.NODE_ENV === "production" ? invariant(!generated || escapedId.generated || typenameChanged, 8) : invariant(!generated || escapedId.generated || typenameChanged, "Store error: the application attempted to write an object with no provided id but the store already contains an id of " + escapedId.id + " for this object. The selectionSet that was trying to be written is:\n" + JSON.stringify(field));
-                    process.env.NODE_ENV === "production" ? invariant(!hadTypename || hasTypename, 9) : invariant(!hadTypename || hasTypename, "Store error: the application attempted to write an object with no provided typename but the store already contains an object with typename of " + escapedId.typename + " for the object of id " + escapedId.id + ". The selectionSet that was trying to be written is:\n" + JSON.stringify(field));
+                    process.env.NODE_ENV === "production" ? invariant(!generated || escapedId.generated || typenameChanged, 4) : invariant(!generated || escapedId.generated || typenameChanged, "Store error: the application attempted to write an object with no provided id but the store already contains an id of " + escapedId.id + " for this object. The selectionSet that was trying to be written is:\n" + JSON.stringify(field));
+                    process.env.NODE_ENV === "production" ? invariant(!hadTypename || hasTypename, 5) : invariant(!hadTypename || hasTypename, "Store error: the application attempted to write an object with no provided typename but the store already contains an object with typename of " + escapedId.typename + " for the object of id " + escapedId.id + ". The selectionSet that was trying to be written is:\n" + JSON.stringify(field));
                     if (escapedId.generated) {
                         if (typenameChanged) {
                             if (!generated) {
@@ -7423,7 +7376,7 @@ var app = (function () {
                 process.env.NODE_ENV === "production" || invariant.warn('cacheResolvers have been renamed to cacheRedirects. Please update your config as we will be deprecating cacheResolvers in the next major version.');
                 _this.config.cacheRedirects = _this.config.cacheResolvers;
             }
-            _this.addTypename = _this.config.addTypename;
+            _this.addTypename = !!_this.config.addTypename;
             _this.data = _this.config.resultCaching
                 ? new DepTrackingCache()
                 : new ObjectCache();
@@ -7466,17 +7419,21 @@ var app = (function () {
                 typeof this.data.get(options.rootId) === 'undefined') {
                 return null;
             }
+            var fragmentMatcher = this.config.fragmentMatcher;
+            var fragmentMatcherFunction = fragmentMatcher && fragmentMatcher.match;
             return this.storeReader.readQueryFromStore({
                 store: options.optimistic ? this.optimisticData : this.data,
                 query: this.transformDocument(options.query),
                 variables: options.variables,
                 rootId: options.rootId,
-                fragmentMatcherFunction: this.config.fragmentMatcher.match,
+                fragmentMatcherFunction: fragmentMatcherFunction,
                 previousResult: options.previousResult,
                 config: this.config,
-            });
+            }) || null;
         };
         InMemoryCache.prototype.write = function (write) {
+            var fragmentMatcher = this.config.fragmentMatcher;
+            var fragmentMatcherFunction = fragmentMatcher && fragmentMatcher.match;
             this.storeWriter.writeResultToStore({
                 dataId: write.dataId,
                 result: write.result,
@@ -7484,18 +7441,20 @@ var app = (function () {
                 document: this.transformDocument(write.query),
                 store: this.data,
                 dataIdFromObject: this.config.dataIdFromObject,
-                fragmentMatcherFunction: this.config.fragmentMatcher.match,
+                fragmentMatcherFunction: fragmentMatcherFunction,
             });
             this.broadcastWatches();
         };
         InMemoryCache.prototype.diff = function (query) {
+            var fragmentMatcher = this.config.fragmentMatcher;
+            var fragmentMatcherFunction = fragmentMatcher && fragmentMatcher.match;
             return this.storeReader.diffQueryAgainstStore({
                 store: query.optimistic ? this.optimisticData : this.data,
                 query: this.transformDocument(query.query),
                 variables: query.variables,
                 returnPartialData: query.returnPartialData,
                 previousResult: query.previousResult,
-                fragmentMatcherFunction: this.config.fragmentMatcher.match,
+                fragmentMatcherFunction: fragmentMatcherFunction,
                 config: this.config,
             });
         };
@@ -7705,7 +7664,7 @@ var app = (function () {
       OperationDefinition: function OperationDefinition(node) {
         var op = node.operation;
         var name = node.name;
-        var varDefs = wrap$2('(', join(node.variableDefinitions, ', '), ')');
+        var varDefs = wrap$1('(', join(node.variableDefinitions, ', '), ')');
         var directives = join(node.directives, ' ');
         var selectionSet = node.selectionSet; // Anonymous queries with no directives or variable definitions can use
         // the query short form.
@@ -7717,7 +7676,7 @@ var app = (function () {
             type = _ref.type,
             defaultValue = _ref.defaultValue,
             directives = _ref.directives;
-        return variable + ': ' + type + wrap$2(' = ', defaultValue) + wrap$2(' ', join(directives, ' '));
+        return variable + ': ' + type + wrap$1(' = ', defaultValue) + wrap$1(' ', join(directives, ' '));
       },
       SelectionSet: function SelectionSet(_ref2) {
         var selections = _ref2.selections;
@@ -7729,7 +7688,7 @@ var app = (function () {
             args = _ref3.arguments,
             directives = _ref3.directives,
             selectionSet = _ref3.selectionSet;
-        return join([wrap$2('', alias, ': ') + name + wrap$2('(', join(args, ', '), ')'), join(directives, ' '), selectionSet], ' ');
+        return join([wrap$1('', alias, ': ') + name + wrap$1('(', join(args, ', '), ')'), join(directives, ' '), selectionSet], ' ');
       },
       Argument: function Argument(_ref4) {
         var name = _ref4.name,
@@ -7740,13 +7699,13 @@ var app = (function () {
       FragmentSpread: function FragmentSpread(_ref5) {
         var name = _ref5.name,
             directives = _ref5.directives;
-        return '...' + name + wrap$2(' ', join(directives, ' '));
+        return '...' + name + wrap$1(' ', join(directives, ' '));
       },
       InlineFragment: function InlineFragment(_ref6) {
         var typeCondition = _ref6.typeCondition,
             directives = _ref6.directives,
             selectionSet = _ref6.selectionSet;
-        return join(['...', wrap$2('on ', typeCondition), join(directives, ' '), selectionSet], ' ');
+        return join(['...', wrap$1('on ', typeCondition), join(directives, ' '), selectionSet], ' ');
       },
       FragmentDefinition: function FragmentDefinition(_ref7) {
         var name = _ref7.name,
@@ -7756,7 +7715,7 @@ var app = (function () {
             selectionSet = _ref7.selectionSet;
         return (// Note: fragment variable definitions are experimental and may be changed
           // or removed in the future.
-          "fragment ".concat(name).concat(wrap$2('(', join(variableDefinitions, ', '), ')'), " ") + "on ".concat(typeCondition, " ").concat(wrap$2('', join(directives, ' '), ' ')) + selectionSet
+          "fragment ".concat(name).concat(wrap$1('(', join(variableDefinitions, ', '), ')'), " ") + "on ".concat(typeCondition, " ").concat(wrap$1('', join(directives, ' '), ' ')) + selectionSet
         );
       },
       // Value
@@ -7801,7 +7760,7 @@ var app = (function () {
       Directive: function Directive(_ref16) {
         var name = _ref16.name,
             args = _ref16.arguments;
-        return '@' + name + wrap$2('(', join(args, ', '), ')');
+        return '@' + name + wrap$1('(', join(args, ', '), ')');
       },
       // Type
       NamedType: function NamedType(_ref17) {
@@ -7837,21 +7796,21 @@ var app = (function () {
             interfaces = _ref23.interfaces,
             directives = _ref23.directives,
             fields = _ref23.fields;
-        return join(['type', name, wrap$2('implements ', join(interfaces, ' & ')), join(directives, ' '), block(fields)], ' ');
+        return join(['type', name, wrap$1('implements ', join(interfaces, ' & ')), join(directives, ' '), block(fields)], ' ');
       }),
       FieldDefinition: addDescription(function (_ref24) {
         var name = _ref24.name,
             args = _ref24.arguments,
             type = _ref24.type,
             directives = _ref24.directives;
-        return name + (hasMultilineItems(args) ? wrap$2('(\n', indent(join(args, '\n')), '\n)') : wrap$2('(', join(args, ', '), ')')) + ': ' + type + wrap$2(' ', join(directives, ' '));
+        return name + (hasMultilineItems(args) ? wrap$1('(\n', indent(join(args, '\n')), '\n)') : wrap$1('(', join(args, ', '), ')')) + ': ' + type + wrap$1(' ', join(directives, ' '));
       }),
       InputValueDefinition: addDescription(function (_ref25) {
         var name = _ref25.name,
             type = _ref25.type,
             defaultValue = _ref25.defaultValue,
             directives = _ref25.directives;
-        return join([name + ': ' + type, wrap$2('= ', defaultValue), join(directives, ' ')], ' ');
+        return join([name + ': ' + type, wrap$1('= ', defaultValue), join(directives, ' ')], ' ');
       }),
       InterfaceTypeDefinition: addDescription(function (_ref26) {
         var name = _ref26.name,
@@ -7887,7 +7846,7 @@ var app = (function () {
             args = _ref31.arguments,
             repeatable = _ref31.repeatable,
             locations = _ref31.locations;
-        return 'directive @' + name + (hasMultilineItems(args) ? wrap$2('(\n', indent(join(args, '\n')), '\n)') : wrap$2('(', join(args, ', '), ')')) + (repeatable ? ' repeatable' : '') + ' on ' + join(locations, ' | ');
+        return 'directive @' + name + (hasMultilineItems(args) ? wrap$1('(\n', indent(join(args, '\n')), '\n)') : wrap$1('(', join(args, ', '), ')')) + (repeatable ? ' repeatable' : '') + ' on ' + join(locations, ' | ');
       }),
       SchemaExtension: function SchemaExtension(_ref32) {
         var directives = _ref32.directives,
@@ -7904,7 +7863,7 @@ var app = (function () {
             interfaces = _ref34.interfaces,
             directives = _ref34.directives,
             fields = _ref34.fields;
-        return join(['extend type', name, wrap$2('implements ', join(interfaces, ' & ')), join(directives, ' '), block(fields)], ' ');
+        return join(['extend type', name, wrap$1('implements ', join(interfaces, ' & ')), join(directives, ' '), block(fields)], ' ');
       },
       InterfaceTypeExtension: function InterfaceTypeExtension(_ref35) {
         var name = _ref35.name,
@@ -7963,7 +7922,7 @@ var app = (function () {
      */
 
 
-    function wrap$2(start, maybeString, end) {
+    function wrap$1(start, maybeString, end) {
       return maybeString ? start + maybeString + (end || '') : '';
     }
 
@@ -7978,6 +7937,10 @@ var app = (function () {
     function hasMultilineItems(maybeArray) {
       return maybeArray && maybeArray.some(isMultiline);
     }
+
+    var printer = /*#__PURE__*/Object.freeze({
+        print: print
+    });
 
     var defaultHttpOptions = {
         includeQuery: true,
@@ -8236,86 +8199,6 @@ var app = (function () {
             return _super.call(this, createHttpLink(opts).request) || this;
         }
         return HttpLink;
-    }(ApolloLink));
-    //# sourceMappingURL=bundle.esm.js.map
-
-    function onError(errorHandler) {
-        return new ApolloLink(function (operation, forward) {
-            return new Observable(function (observer) {
-                var sub;
-                var retriedSub;
-                var retriedResult;
-                try {
-                    sub = forward(operation).subscribe({
-                        next: function (result) {
-                            if (result.errors) {
-                                retriedResult = errorHandler({
-                                    graphQLErrors: result.errors,
-                                    response: result,
-                                    operation: operation,
-                                    forward: forward,
-                                });
-                                if (retriedResult) {
-                                    retriedSub = retriedResult.subscribe({
-                                        next: observer.next.bind(observer),
-                                        error: observer.error.bind(observer),
-                                        complete: observer.complete.bind(observer),
-                                    });
-                                    return;
-                                }
-                            }
-                            observer.next(result);
-                        },
-                        error: function (networkError) {
-                            retriedResult = errorHandler({
-                                operation: operation,
-                                networkError: networkError,
-                                graphQLErrors: networkError &&
-                                    networkError.result &&
-                                    networkError.result.errors,
-                                forward: forward,
-                            });
-                            if (retriedResult) {
-                                retriedSub = retriedResult.subscribe({
-                                    next: observer.next.bind(observer),
-                                    error: observer.error.bind(observer),
-                                    complete: observer.complete.bind(observer),
-                                });
-                                return;
-                            }
-                            observer.error(networkError);
-                        },
-                        complete: function () {
-                            if (!retriedResult) {
-                                observer.complete.bind(observer)();
-                            }
-                        },
-                    });
-                }
-                catch (e) {
-                    errorHandler({ networkError: e, operation: operation, forward: forward });
-                    observer.error(e);
-                }
-                return function () {
-                    if (sub)
-                        sub.unsubscribe();
-                    if (retriedSub)
-                        sub.unsubscribe();
-                };
-            });
-        });
-    }
-    var ErrorLink = (function (_super) {
-        __extends(ErrorLink, _super);
-        function ErrorLink(errorHandler) {
-            var _this = _super.call(this) || this;
-            _this.link = onError(errorHandler);
-            return _this;
-        }
-        ErrorLink.prototype.request = function (operation, forward) {
-            return this.link.request(operation, forward);
-        };
-        return ErrorLink;
     }(ApolloLink));
     //# sourceMappingURL=bundle.esm.js.map
 
@@ -11111,117 +10994,6 @@ var app = (function () {
 
     var src = gql;
 
-    var PRESET_CONFIG_KEYS = [
-        'request',
-        'uri',
-        'credentials',
-        'headers',
-        'fetch',
-        'fetchOptions',
-        'clientState',
-        'onError',
-        'cacheRedirects',
-        'cache',
-        'name',
-        'version',
-        'resolvers',
-        'typeDefs',
-        'fragmentMatcher',
-    ];
-    var DefaultClient = (function (_super) {
-        __extends(DefaultClient, _super);
-        function DefaultClient(config) {
-            if (config === void 0) { config = {}; }
-            var _this = this;
-            if (config) {
-                var diff = Object.keys(config).filter(function (key) { return PRESET_CONFIG_KEYS.indexOf(key) === -1; });
-                if (diff.length > 0) {
-                    process.env.NODE_ENV === "production" || invariant.warn('ApolloBoost was initialized with unsupported options: ' +
-                        ("" + diff.join(' ')));
-                }
-            }
-            var request = config.request, uri = config.uri, credentials = config.credentials, headers = config.headers, fetch = config.fetch, fetchOptions = config.fetchOptions, clientState = config.clientState, cacheRedirects = config.cacheRedirects, errorCallback = config.onError, name = config.name, version = config.version, resolvers = config.resolvers, typeDefs = config.typeDefs, fragmentMatcher = config.fragmentMatcher;
-            var cache = config.cache;
-            process.env.NODE_ENV === "production" ? invariant(!cache || !cacheRedirects, 1) : invariant(!cache || !cacheRedirects, 'Incompatible cache configuration. When not providing `cache`, ' +
-                'configure the provided instance with `cacheRedirects` instead.');
-            if (!cache) {
-                cache = cacheRedirects
-                    ? new InMemoryCache({ cacheRedirects: cacheRedirects })
-                    : new InMemoryCache();
-            }
-            var errorLink = errorCallback
-                ? onError(errorCallback)
-                : onError(function (_a) {
-                    var graphQLErrors = _a.graphQLErrors, networkError = _a.networkError;
-                    if (graphQLErrors) {
-                        graphQLErrors.map(function (_a) {
-                            var message = _a.message, locations = _a.locations, path = _a.path;
-                            return process.env.NODE_ENV === "production" || invariant.warn("[GraphQL error]: Message: " + message + ", Location: " +
-                                (locations + ", Path: " + path));
-                        });
-                    }
-                    if (networkError) {
-                        process.env.NODE_ENV === "production" || invariant.warn("[Network error]: " + networkError);
-                    }
-                });
-            var requestHandler = request
-                ? new ApolloLink(function (operation, forward) {
-                    return new Observable(function (observer) {
-                        var handle;
-                        Promise.resolve(operation)
-                            .then(function (oper) { return request(oper); })
-                            .then(function () {
-                            handle = forward(operation).subscribe({
-                                next: observer.next.bind(observer),
-                                error: observer.error.bind(observer),
-                                complete: observer.complete.bind(observer),
-                            });
-                        })
-                            .catch(observer.error.bind(observer));
-                        return function () {
-                            if (handle) {
-                                handle.unsubscribe();
-                            }
-                        };
-                    });
-                })
-                : false;
-            var httpLink = new HttpLink({
-                uri: uri || '/graphql',
-                fetch: fetch,
-                fetchOptions: fetchOptions || {},
-                credentials: credentials || 'same-origin',
-                headers: headers || {},
-            });
-            var link = ApolloLink.from([errorLink, requestHandler, httpLink].filter(function (x) { return !!x; }));
-            var activeResolvers = resolvers;
-            var activeTypeDefs = typeDefs;
-            var activeFragmentMatcher = fragmentMatcher;
-            if (clientState) {
-                if (clientState.defaults) {
-                    cache.writeData({
-                        data: clientState.defaults,
-                    });
-                }
-                activeResolvers = clientState.resolvers;
-                activeTypeDefs = clientState.typeDefs;
-                activeFragmentMatcher = clientState.fragmentMatcher;
-            }
-            _this = _super.call(this, {
-                cache: cache,
-                link: link,
-                name: name,
-                version: version,
-                resolvers: activeResolvers,
-                typeDefs: activeTypeDefs,
-                fragmentMatcher: activeFragmentMatcher,
-            }) || this;
-            return _this;
-        }
-        return DefaultClient;
-    }(ApolloClient));
-    //# sourceMappingURL=bundle.esm.js.map
-
     const CREATE_USER = src`
   mutation(
     $isCompany: Boolean!
@@ -11789,23 +11561,29 @@ var app = (function () {
         return console.log("Already started Timeout, exiting function!!!");
       }
 
-      const prevLoggedInDate = JSON.parse(localStorage.getItem("lastLoggedIn"));
-      const oldToken = JSON.parse(localStorage.getItem("refreshToken"));
-      const refreshExpirationTime = 15 * 60000;
+      const REFRESH_EXPIRATION_TIME_IN_MINUTES = 15;
 
-      let timeDifference = Math.abs(Date.now() - prevLoggedInDate);
+      let prevLoggedInDate = JSON.parse(localStorage.getItem("lastLoggedIn"));
+      let oldToken = JSON.parse(localStorage.getItem("refreshToken"));
+
+      // Must convert timeDifference to minutes
+      let timeDifference = Math.abs(Date.now() - prevLoggedInDate) / 60000;
+      // Must substract 10% from the constant refresh expiration time
+      let refreshExpirationTime =
+        REFRESH_EXPIRATION_TIME_IN_MINUTES -
+        REFRESH_EXPIRATION_TIME_IN_MINUTES * 0.1;
 
       if (timeDifference > refreshExpirationTime) {
-        console.log(timeDifference / 60000 + " > " + refreshExpirationTime / 60000);
+        //console.log(timeDifference + " > " + refreshExpirationTime);
         tokenRefresh(client, oldToken);
       } else {
-        console.log(timeDifference / 60000 + " < " + refreshExpirationTime / 60000);
+        //console.log(timeDifference + " < " + refreshExpirationTime);
         let remainingTime = refreshExpirationTime - timeDifference;
-        let remainingTimeMinusTenPercent = remainingTime - remainingTime * 0.1;
         clearTokenRefreshTimeout();
         tokenRefreshTimeout = setTimeout(
+          remainingTime * 60000,
+          // Must convert minutes to milliseconds
           tokenRefresh,
-          remainingTimeMinusTenPercent,
           client,
           oldToken
         );
@@ -11818,7 +11596,7 @@ var app = (function () {
           sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
         }
 
-        console.log("Fetch token in : " + remainingTimeMinusTenPercent / 60000);
+        console.log("Fetch token in : " + remainingTime);
       }
     }
 
@@ -13988,10 +13766,10 @@ var app = (function () {
     			div = element("div");
     			p = element("p");
     			t = text(ctx.label);
-    			add_location(p, file$c, 55, 4, 1454);
+    			add_location(p, file$c, 72, 4, 1919);
     			attr(div, "class", "card");
-    			add_location(div, file$c, 54, 2, 1430);
-    			add_location(main, file$c, 53, 0, 1420);
+    			add_location(div, file$c, 71, 2, 1895);
+    			add_location(main, file$c, 70, 0, 1885);
     		},
 
     		l: function claim(nodes) {
@@ -14022,6 +13800,20 @@ var app = (function () {
     	};
     }
 
+    function timeout$1(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function waitToNotify(ms) {
+      await timeout$1(ms);
+    }
+
+    async function pushToLogin(ms, msg) {
+      notifications.danger(msg, ms - ms * 0.15);
+      await waitToNotify(ms);
+      push("/login");
+    }
+
     function instance$c($$self, $$props, $$invalidate) {
     	let $isLoggedIn;
 
@@ -14036,13 +13828,12 @@ var app = (function () {
 
       let label = "Confirming invitation, please wait...";
 
-      setTimeout(() => {
-        if ($isLoggedIn === false) {
-          push("/login");
-        } else {
-          confirmInvitation();
-        }
-      }, 5000);
+      if ($isLoggedIn === false) {
+        msg = "You are not Logged in, redirecting to the log in page...";
+        pushToLogin(4000, msg);
+      } else {
+        confirmInvitation();
+      }
 
       async function confirmInvitation() {
         try {
@@ -14064,7 +13855,11 @@ var app = (function () {
           });
         } catch (error) {
           console.log(error);
-          push("/dashboard/");
+          $$invalidate('label', label = "An error occurred");
+          notifications.danger(label, 1500);
+          setTimeout(() => {
+            push("/dashboard/");
+          }, 1800);
         }
       }
       console.log(params.id);
@@ -14523,6 +14318,1126 @@ var app = (function () {
     	}
     }
 
+    /**
+     * Expose `Backoff`.
+     */
+
+    var backo2 = Backoff;
+
+    /**
+     * Initialize backoff timer with `opts`.
+     *
+     * - `min` initial timeout in milliseconds [100]
+     * - `max` max timeout [10000]
+     * - `jitter` [0]
+     * - `factor` [2]
+     *
+     * @param {Object} opts
+     * @api public
+     */
+
+    function Backoff(opts) {
+      opts = opts || {};
+      this.ms = opts.min || 100;
+      this.max = opts.max || 10000;
+      this.factor = opts.factor || 2;
+      this.jitter = opts.jitter > 0 && opts.jitter <= 1 ? opts.jitter : 0;
+      this.attempts = 0;
+    }
+
+    /**
+     * Return the backoff duration.
+     *
+     * @return {Number}
+     * @api public
+     */
+
+    Backoff.prototype.duration = function(){
+      var ms = this.ms * Math.pow(this.factor, this.attempts++);
+      if (this.jitter) {
+        var rand =  Math.random();
+        var deviation = Math.floor(rand * this.jitter * ms);
+        ms = (Math.floor(rand * 10) & 1) == 0  ? ms - deviation : ms + deviation;
+      }
+      return Math.min(ms, this.max) | 0;
+    };
+
+    /**
+     * Reset the number of attempts.
+     *
+     * @api public
+     */
+
+    Backoff.prototype.reset = function(){
+      this.attempts = 0;
+    };
+
+    /**
+     * Set the minimum duration
+     *
+     * @api public
+     */
+
+    Backoff.prototype.setMin = function(min){
+      this.ms = min;
+    };
+
+    /**
+     * Set the maximum duration
+     *
+     * @api public
+     */
+
+    Backoff.prototype.setMax = function(max){
+      this.max = max;
+    };
+
+    /**
+     * Set the jitter
+     *
+     * @api public
+     */
+
+    Backoff.prototype.setJitter = function(jitter){
+      this.jitter = jitter;
+    };
+
+    var eventemitter3 = createCommonjsModule(function (module) {
+
+    var has = Object.prototype.hasOwnProperty
+      , prefix = '~';
+
+    /**
+     * Constructor to create a storage for our `EE` objects.
+     * An `Events` instance is a plain object whose properties are event names.
+     *
+     * @constructor
+     * @private
+     */
+    function Events() {}
+
+    //
+    // We try to not inherit from `Object.prototype`. In some engines creating an
+    // instance in this way is faster than calling `Object.create(null)` directly.
+    // If `Object.create(null)` is not supported we prefix the event names with a
+    // character to make sure that the built-in object properties are not
+    // overridden or used as an attack vector.
+    //
+    if (Object.create) {
+      Events.prototype = Object.create(null);
+
+      //
+      // This hack is needed because the `__proto__` property is still inherited in
+      // some old browsers like Android 4, iPhone 5.1, Opera 11 and Safari 5.
+      //
+      if (!new Events().__proto__) prefix = false;
+    }
+
+    /**
+     * Representation of a single event listener.
+     *
+     * @param {Function} fn The listener function.
+     * @param {*} context The context to invoke the listener with.
+     * @param {Boolean} [once=false] Specify if the listener is a one-time listener.
+     * @constructor
+     * @private
+     */
+    function EE(fn, context, once) {
+      this.fn = fn;
+      this.context = context;
+      this.once = once || false;
+    }
+
+    /**
+     * Add a listener for a given event.
+     *
+     * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+     * @param {(String|Symbol)} event The event name.
+     * @param {Function} fn The listener function.
+     * @param {*} context The context to invoke the listener with.
+     * @param {Boolean} once Specify if the listener is a one-time listener.
+     * @returns {EventEmitter}
+     * @private
+     */
+    function addListener(emitter, event, fn, context, once) {
+      if (typeof fn !== 'function') {
+        throw new TypeError('The listener must be a function');
+      }
+
+      var listener = new EE(fn, context || emitter, once)
+        , evt = prefix ? prefix + event : event;
+
+      if (!emitter._events[evt]) emitter._events[evt] = listener, emitter._eventsCount++;
+      else if (!emitter._events[evt].fn) emitter._events[evt].push(listener);
+      else emitter._events[evt] = [emitter._events[evt], listener];
+
+      return emitter;
+    }
+
+    /**
+     * Clear event by name.
+     *
+     * @param {EventEmitter} emitter Reference to the `EventEmitter` instance.
+     * @param {(String|Symbol)} evt The Event name.
+     * @private
+     */
+    function clearEvent(emitter, evt) {
+      if (--emitter._eventsCount === 0) emitter._events = new Events();
+      else delete emitter._events[evt];
+    }
+
+    /**
+     * Minimal `EventEmitter` interface that is molded against the Node.js
+     * `EventEmitter` interface.
+     *
+     * @constructor
+     * @public
+     */
+    function EventEmitter() {
+      this._events = new Events();
+      this._eventsCount = 0;
+    }
+
+    /**
+     * Return an array listing the events for which the emitter has registered
+     * listeners.
+     *
+     * @returns {Array}
+     * @public
+     */
+    EventEmitter.prototype.eventNames = function eventNames() {
+      var names = []
+        , events
+        , name;
+
+      if (this._eventsCount === 0) return names;
+
+      for (name in (events = this._events)) {
+        if (has.call(events, name)) names.push(prefix ? name.slice(1) : name);
+      }
+
+      if (Object.getOwnPropertySymbols) {
+        return names.concat(Object.getOwnPropertySymbols(events));
+      }
+
+      return names;
+    };
+
+    /**
+     * Return the listeners registered for a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @returns {Array} The registered listeners.
+     * @public
+     */
+    EventEmitter.prototype.listeners = function listeners(event) {
+      var evt = prefix ? prefix + event : event
+        , handlers = this._events[evt];
+
+      if (!handlers) return [];
+      if (handlers.fn) return [handlers.fn];
+
+      for (var i = 0, l = handlers.length, ee = new Array(l); i < l; i++) {
+        ee[i] = handlers[i].fn;
+      }
+
+      return ee;
+    };
+
+    /**
+     * Return the number of listeners listening to a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @returns {Number} The number of listeners.
+     * @public
+     */
+    EventEmitter.prototype.listenerCount = function listenerCount(event) {
+      var evt = prefix ? prefix + event : event
+        , listeners = this._events[evt];
+
+      if (!listeners) return 0;
+      if (listeners.fn) return 1;
+      return listeners.length;
+    };
+
+    /**
+     * Calls each of the listeners registered for a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @returns {Boolean} `true` if the event had listeners, else `false`.
+     * @public
+     */
+    EventEmitter.prototype.emit = function emit(event, a1, a2, a3, a4, a5) {
+      var evt = prefix ? prefix + event : event;
+
+      if (!this._events[evt]) return false;
+
+      var listeners = this._events[evt]
+        , len = arguments.length
+        , args
+        , i;
+
+      if (listeners.fn) {
+        if (listeners.once) this.removeListener(event, listeners.fn, undefined, true);
+
+        switch (len) {
+          case 1: return listeners.fn.call(listeners.context), true;
+          case 2: return listeners.fn.call(listeners.context, a1), true;
+          case 3: return listeners.fn.call(listeners.context, a1, a2), true;
+          case 4: return listeners.fn.call(listeners.context, a1, a2, a3), true;
+          case 5: return listeners.fn.call(listeners.context, a1, a2, a3, a4), true;
+          case 6: return listeners.fn.call(listeners.context, a1, a2, a3, a4, a5), true;
+        }
+
+        for (i = 1, args = new Array(len -1); i < len; i++) {
+          args[i - 1] = arguments[i];
+        }
+
+        listeners.fn.apply(listeners.context, args);
+      } else {
+        var length = listeners.length
+          , j;
+
+        for (i = 0; i < length; i++) {
+          if (listeners[i].once) this.removeListener(event, listeners[i].fn, undefined, true);
+
+          switch (len) {
+            case 1: listeners[i].fn.call(listeners[i].context); break;
+            case 2: listeners[i].fn.call(listeners[i].context, a1); break;
+            case 3: listeners[i].fn.call(listeners[i].context, a1, a2); break;
+            case 4: listeners[i].fn.call(listeners[i].context, a1, a2, a3); break;
+            default:
+              if (!args) for (j = 1, args = new Array(len -1); j < len; j++) {
+                args[j - 1] = arguments[j];
+              }
+
+              listeners[i].fn.apply(listeners[i].context, args);
+          }
+        }
+      }
+
+      return true;
+    };
+
+    /**
+     * Add a listener for a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @param {Function} fn The listener function.
+     * @param {*} [context=this] The context to invoke the listener with.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    EventEmitter.prototype.on = function on(event, fn, context) {
+      return addListener(this, event, fn, context, false);
+    };
+
+    /**
+     * Add a one-time listener for a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @param {Function} fn The listener function.
+     * @param {*} [context=this] The context to invoke the listener with.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    EventEmitter.prototype.once = function once(event, fn, context) {
+      return addListener(this, event, fn, context, true);
+    };
+
+    /**
+     * Remove the listeners of a given event.
+     *
+     * @param {(String|Symbol)} event The event name.
+     * @param {Function} fn Only remove the listeners that match this function.
+     * @param {*} context Only remove the listeners that have this context.
+     * @param {Boolean} once Only remove one-time listeners.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    EventEmitter.prototype.removeListener = function removeListener(event, fn, context, once) {
+      var evt = prefix ? prefix + event : event;
+
+      if (!this._events[evt]) return this;
+      if (!fn) {
+        clearEvent(this, evt);
+        return this;
+      }
+
+      var listeners = this._events[evt];
+
+      if (listeners.fn) {
+        if (
+          listeners.fn === fn &&
+          (!once || listeners.once) &&
+          (!context || listeners.context === context)
+        ) {
+          clearEvent(this, evt);
+        }
+      } else {
+        for (var i = 0, events = [], length = listeners.length; i < length; i++) {
+          if (
+            listeners[i].fn !== fn ||
+            (once && !listeners[i].once) ||
+            (context && listeners[i].context !== context)
+          ) {
+            events.push(listeners[i]);
+          }
+        }
+
+        //
+        // Reset the array, or remove it completely if we have no more listeners.
+        //
+        if (events.length) this._events[evt] = events.length === 1 ? events[0] : events;
+        else clearEvent(this, evt);
+      }
+
+      return this;
+    };
+
+    /**
+     * Remove all listeners, or those of the specified event.
+     *
+     * @param {(String|Symbol)} [event] The event name.
+     * @returns {EventEmitter} `this`.
+     * @public
+     */
+    EventEmitter.prototype.removeAllListeners = function removeAllListeners(event) {
+      var evt;
+
+      if (event) {
+        evt = prefix ? prefix + event : event;
+        if (this._events[evt]) clearEvent(this, evt);
+      } else {
+        this._events = new Events();
+        this._eventsCount = 0;
+      }
+
+      return this;
+    };
+
+    //
+    // Alias methods names because people roll like that.
+    //
+    EventEmitter.prototype.off = EventEmitter.prototype.removeListener;
+    EventEmitter.prototype.addListener = EventEmitter.prototype.on;
+
+    //
+    // Expose the prefix.
+    //
+    EventEmitter.prefixed = prefix;
+
+    //
+    // Allow `EventEmitter` to be imported as module namespace.
+    //
+    EventEmitter.EventEmitter = EventEmitter;
+
+    //
+    // Expose the module.
+    //
+    {
+      module.exports = EventEmitter;
+    }
+    });
+
+    var isString_1 = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function isString(value) {
+        return typeof value === 'string';
+    }
+    exports.default = isString;
+    //# sourceMappingURL=is-string.js.map
+    });
+
+    unwrapExports(isString_1);
+
+    var isObject_1 = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    function isObject(value) {
+        return ((value !== null) && (typeof value === 'object'));
+    }
+    exports.default = isObject;
+    //# sourceMappingURL=is-object.js.map
+    });
+
+    unwrapExports(isObject_1);
+
+    /**
+     * Returns an operation AST given a document AST and optionally an operation
+     * name. If a name is not provided, an operation is only returned if only one is
+     * provided in the document.
+     */
+    function getOperationAST(documentAST, operationName) {
+      var operation = null;
+      var _iteratorNormalCompletion = true;
+      var _didIteratorError = false;
+      var _iteratorError = undefined;
+
+      try {
+        for (var _iterator = documentAST.definitions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          var definition = _step.value;
+
+          if (definition.kind === Kind.OPERATION_DEFINITION) {
+            if (!operationName) {
+              // If no operation name was provided, only return an Operation if there
+              // is one defined in the document. Upon encountering the second, return
+              // null.
+              if (operation) {
+                return null;
+              }
+
+              operation = definition;
+            } else if (definition.name && definition.name.value === operationName) {
+              return definition;
+            }
+          }
+        }
+      } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion && _iterator.return != null) {
+            _iterator.return();
+          }
+        } finally {
+          if (_didIteratorError) {
+            throw _iteratorError;
+          }
+        }
+      }
+
+      return operation;
+    }
+
+    var getOperationAST$1 = /*#__PURE__*/Object.freeze({
+        getOperationAST: getOperationAST
+    });
+
+    var protocol = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var GRAPHQL_WS = 'graphql-ws';
+    exports.GRAPHQL_WS = GRAPHQL_WS;
+    var GRAPHQL_SUBSCRIPTIONS = 'graphql-subscriptions';
+    exports.GRAPHQL_SUBSCRIPTIONS = GRAPHQL_SUBSCRIPTIONS;
+    //# sourceMappingURL=protocol.js.map
+    });
+
+    unwrapExports(protocol);
+    var protocol_1 = protocol.GRAPHQL_WS;
+    var protocol_2 = protocol.GRAPHQL_SUBSCRIPTIONS;
+
+    var defaults = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var WS_TIMEOUT = 30000;
+    exports.WS_TIMEOUT = WS_TIMEOUT;
+    //# sourceMappingURL=defaults.js.map
+    });
+
+    unwrapExports(defaults);
+    var defaults_1 = defaults.WS_TIMEOUT;
+
+    var messageTypes = createCommonjsModule(function (module, exports) {
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var MessageTypes = (function () {
+        function MessageTypes() {
+            throw new Error('Static Class');
+        }
+        MessageTypes.GQL_CONNECTION_INIT = 'connection_init';
+        MessageTypes.GQL_CONNECTION_ACK = 'connection_ack';
+        MessageTypes.GQL_CONNECTION_ERROR = 'connection_error';
+        MessageTypes.GQL_CONNECTION_KEEP_ALIVE = 'ka';
+        MessageTypes.GQL_CONNECTION_TERMINATE = 'connection_terminate';
+        MessageTypes.GQL_START = 'start';
+        MessageTypes.GQL_DATA = 'data';
+        MessageTypes.GQL_ERROR = 'error';
+        MessageTypes.GQL_COMPLETE = 'complete';
+        MessageTypes.GQL_STOP = 'stop';
+        MessageTypes.SUBSCRIPTION_START = 'subscription_start';
+        MessageTypes.SUBSCRIPTION_DATA = 'subscription_data';
+        MessageTypes.SUBSCRIPTION_SUCCESS = 'subscription_success';
+        MessageTypes.SUBSCRIPTION_FAIL = 'subscription_fail';
+        MessageTypes.SUBSCRIPTION_END = 'subscription_end';
+        MessageTypes.INIT = 'init';
+        MessageTypes.INIT_SUCCESS = 'init_success';
+        MessageTypes.INIT_FAIL = 'init_fail';
+        MessageTypes.KEEP_ALIVE = 'keepalive';
+        return MessageTypes;
+    }());
+    exports.default = MessageTypes;
+    //# sourceMappingURL=message-types.js.map
+    });
+
+    unwrapExports(messageTypes);
+
+    var printer_1 = getCjsExportFromNamespace(printer);
+
+    var getOperationAST_1 = getCjsExportFromNamespace(getOperationAST$1);
+
+    var client = createCommonjsModule(function (module, exports) {
+    var __assign = (commonjsGlobal && commonjsGlobal.__assign) || Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    var __awaiter = (commonjsGlobal && commonjsGlobal.__awaiter) || function (thisArg, _arguments, P, generator) {
+        return new (P || (P = Promise))(function (resolve, reject) {
+            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+            function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+            step((generator = generator.apply(thisArg, _arguments || [])).next());
+        });
+    };
+    var __generator = (commonjsGlobal && commonjsGlobal.__generator) || function (thisArg, body) {
+        var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+        return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+        function verb(n) { return function (v) { return step([n, v]); }; }
+        function step(op) {
+            if (f) throw new TypeError("Generator is already executing.");
+            while (_) try {
+                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+                if (y = 0, t) op = [op[0] & 2, t.value];
+                switch (op[0]) {
+                    case 0: case 1: t = op; break;
+                    case 4: _.label++; return { value: op[1], done: false };
+                    case 5: _.label++; y = op[1]; op = [0]; continue;
+                    case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                    default:
+                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                        if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                        if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                        if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                        if (t[2]) _.ops.pop();
+                        _.trys.pop(); continue;
+                }
+                op = body.call(thisArg, _);
+            } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+            if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+        }
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    var _global = typeof commonjsGlobal !== 'undefined' ? commonjsGlobal : (typeof window !== 'undefined' ? window : {});
+    var NativeWebSocket = _global.WebSocket || _global.MozWebSocket;
+
+
+
+
+
+
+
+
+
+
+    var SubscriptionClient = (function () {
+        function SubscriptionClient(url, options, webSocketImpl, webSocketProtocols) {
+            var _a = (options || {}), _b = _a.connectionCallback, connectionCallback = _b === void 0 ? undefined : _b, _c = _a.connectionParams, connectionParams = _c === void 0 ? {} : _c, _d = _a.timeout, timeout = _d === void 0 ? defaults.WS_TIMEOUT : _d, _e = _a.reconnect, reconnect = _e === void 0 ? false : _e, _f = _a.reconnectionAttempts, reconnectionAttempts = _f === void 0 ? Infinity : _f, _g = _a.lazy, lazy = _g === void 0 ? false : _g, _h = _a.inactivityTimeout, inactivityTimeout = _h === void 0 ? 0 : _h;
+            this.wsImpl = webSocketImpl || NativeWebSocket;
+            if (!this.wsImpl) {
+                throw new Error('Unable to find native implementation, or alternative implementation for WebSocket!');
+            }
+            this.wsProtocols = webSocketProtocols || protocol.GRAPHQL_WS;
+            this.connectionCallback = connectionCallback;
+            this.url = url;
+            this.operations = {};
+            this.nextOperationId = 0;
+            this.wsTimeout = timeout;
+            this.unsentMessagesQueue = [];
+            this.reconnect = reconnect;
+            this.reconnecting = false;
+            this.reconnectionAttempts = reconnectionAttempts;
+            this.lazy = !!lazy;
+            this.inactivityTimeout = inactivityTimeout;
+            this.closedByUser = false;
+            this.backoff = new backo2({ jitter: 0.5 });
+            this.eventEmitter = new eventemitter3.EventEmitter();
+            this.middlewares = [];
+            this.client = null;
+            this.maxConnectTimeGenerator = this.createMaxConnectTimeGenerator();
+            this.connectionParams = this.getConnectionParams(connectionParams);
+            if (!this.lazy) {
+                this.connect();
+            }
+        }
+        Object.defineProperty(SubscriptionClient.prototype, "status", {
+            get: function () {
+                if (this.client === null) {
+                    return this.wsImpl.CLOSED;
+                }
+                return this.client.readyState;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        SubscriptionClient.prototype.close = function (isForced, closedByUser) {
+            if (isForced === void 0) { isForced = true; }
+            if (closedByUser === void 0) { closedByUser = true; }
+            this.clearInactivityTimeout();
+            if (this.client !== null) {
+                this.closedByUser = closedByUser;
+                if (isForced) {
+                    this.clearCheckConnectionInterval();
+                    this.clearMaxConnectTimeout();
+                    this.clearTryReconnectTimeout();
+                    this.unsubscribeAll();
+                    this.sendMessage(undefined, messageTypes.default.GQL_CONNECTION_TERMINATE, null);
+                }
+                this.client.close();
+                this.client = null;
+                this.eventEmitter.emit('disconnected');
+                if (!isForced) {
+                    this.tryReconnect();
+                }
+            }
+        };
+        SubscriptionClient.prototype.request = function (request) {
+            var _a;
+            var getObserver = this.getObserver.bind(this);
+            var executeOperation = this.executeOperation.bind(this);
+            var unsubscribe = this.unsubscribe.bind(this);
+            var opId;
+            this.clearInactivityTimeout();
+            return _a = {},
+                _a[result.default] = function () {
+                    return this;
+                },
+                _a.subscribe = function (observerOrNext, onError, onComplete) {
+                    var observer = getObserver(observerOrNext, onError, onComplete);
+                    opId = executeOperation(request, function (error, result) {
+                        if (error === null && result === null) {
+                            if (observer.complete) {
+                                observer.complete();
+                            }
+                        }
+                        else if (error) {
+                            if (observer.error) {
+                                observer.error(error[0]);
+                            }
+                        }
+                        else {
+                            if (observer.next) {
+                                observer.next(result);
+                            }
+                        }
+                    });
+                    return {
+                        unsubscribe: function () {
+                            if (opId) {
+                                unsubscribe(opId);
+                                opId = null;
+                            }
+                        },
+                    };
+                },
+                _a;
+        };
+        SubscriptionClient.prototype.on = function (eventName, callback, context) {
+            var handler = this.eventEmitter.on(eventName, callback, context);
+            return function () {
+                handler.off(eventName, callback, context);
+            };
+        };
+        SubscriptionClient.prototype.onConnected = function (callback, context) {
+            return this.on('connected', callback, context);
+        };
+        SubscriptionClient.prototype.onConnecting = function (callback, context) {
+            return this.on('connecting', callback, context);
+        };
+        SubscriptionClient.prototype.onDisconnected = function (callback, context) {
+            return this.on('disconnected', callback, context);
+        };
+        SubscriptionClient.prototype.onReconnected = function (callback, context) {
+            return this.on('reconnected', callback, context);
+        };
+        SubscriptionClient.prototype.onReconnecting = function (callback, context) {
+            return this.on('reconnecting', callback, context);
+        };
+        SubscriptionClient.prototype.onError = function (callback, context) {
+            return this.on('error', callback, context);
+        };
+        SubscriptionClient.prototype.unsubscribeAll = function () {
+            var _this = this;
+            Object.keys(this.operations).forEach(function (subId) {
+                _this.unsubscribe(subId);
+            });
+        };
+        SubscriptionClient.prototype.applyMiddlewares = function (options) {
+            var _this = this;
+            return new Promise(function (resolve, reject) {
+                var queue = function (funcs, scope) {
+                    var next = function (error) {
+                        if (error) {
+                            reject(error);
+                        }
+                        else {
+                            if (funcs.length > 0) {
+                                var f = funcs.shift();
+                                if (f) {
+                                    f.applyMiddleware.apply(scope, [options, next]);
+                                }
+                            }
+                            else {
+                                resolve(options);
+                            }
+                        }
+                    };
+                    next();
+                };
+                queue(_this.middlewares.slice(), _this);
+            });
+        };
+        SubscriptionClient.prototype.use = function (middlewares) {
+            var _this = this;
+            middlewares.map(function (middleware) {
+                if (typeof middleware.applyMiddleware === 'function') {
+                    _this.middlewares.push(middleware);
+                }
+                else {
+                    throw new Error('Middleware must implement the applyMiddleware function.');
+                }
+            });
+            return this;
+        };
+        SubscriptionClient.prototype.getConnectionParams = function (connectionParams) {
+            return function () { return new Promise(function (resolve, reject) {
+                if (typeof connectionParams === 'function') {
+                    try {
+                        return resolve(connectionParams.call(null));
+                    }
+                    catch (error) {
+                        return reject(error);
+                    }
+                }
+                resolve(connectionParams);
+            }); };
+        };
+        SubscriptionClient.prototype.executeOperation = function (options, handler) {
+            var _this = this;
+            if (this.client === null) {
+                this.connect();
+            }
+            var opId = this.generateOperationId();
+            this.operations[opId] = { options: options, handler: handler };
+            this.applyMiddlewares(options)
+                .then(function (processedOptions) {
+                _this.checkOperationOptions(processedOptions, handler);
+                if (_this.operations[opId]) {
+                    _this.operations[opId] = { options: processedOptions, handler: handler };
+                    _this.sendMessage(opId, messageTypes.default.GQL_START, processedOptions);
+                }
+            })
+                .catch(function (error) {
+                _this.unsubscribe(opId);
+                handler(_this.formatErrors(error));
+            });
+            return opId;
+        };
+        SubscriptionClient.prototype.getObserver = function (observerOrNext, error, complete) {
+            if (typeof observerOrNext === 'function') {
+                return {
+                    next: function (v) { return observerOrNext(v); },
+                    error: function (e) { return error && error(e); },
+                    complete: function () { return complete && complete(); },
+                };
+            }
+            return observerOrNext;
+        };
+        SubscriptionClient.prototype.createMaxConnectTimeGenerator = function () {
+            var minValue = 1000;
+            var maxValue = this.wsTimeout;
+            return new backo2({
+                min: minValue,
+                max: maxValue,
+                factor: 1.2,
+            });
+        };
+        SubscriptionClient.prototype.clearCheckConnectionInterval = function () {
+            if (this.checkConnectionIntervalId) {
+                clearInterval(this.checkConnectionIntervalId);
+                this.checkConnectionIntervalId = null;
+            }
+        };
+        SubscriptionClient.prototype.clearMaxConnectTimeout = function () {
+            if (this.maxConnectTimeoutId) {
+                clearTimeout(this.maxConnectTimeoutId);
+                this.maxConnectTimeoutId = null;
+            }
+        };
+        SubscriptionClient.prototype.clearTryReconnectTimeout = function () {
+            if (this.tryReconnectTimeoutId) {
+                clearTimeout(this.tryReconnectTimeoutId);
+                this.tryReconnectTimeoutId = null;
+            }
+        };
+        SubscriptionClient.prototype.clearInactivityTimeout = function () {
+            if (this.inactivityTimeoutId) {
+                clearTimeout(this.inactivityTimeoutId);
+                this.inactivityTimeoutId = null;
+            }
+        };
+        SubscriptionClient.prototype.setInactivityTimeout = function () {
+            var _this = this;
+            if (this.inactivityTimeout > 0 && Object.keys(this.operations).length === 0) {
+                this.inactivityTimeoutId = setTimeout(function () {
+                    if (Object.keys(_this.operations).length === 0) {
+                        _this.close();
+                    }
+                }, this.inactivityTimeout);
+            }
+        };
+        SubscriptionClient.prototype.checkOperationOptions = function (options, handler) {
+            var query = options.query, variables = options.variables, operationName = options.operationName;
+            if (!query) {
+                throw new Error('Must provide a query.');
+            }
+            if (!handler) {
+                throw new Error('Must provide an handler.');
+            }
+            if ((!isString_1.default(query) && !getOperationAST_1.getOperationAST(query, operationName)) ||
+                (operationName && !isString_1.default(operationName)) ||
+                (variables && !isObject_1.default(variables))) {
+                throw new Error('Incorrect option types. query must be a string or a document,' +
+                    '`operationName` must be a string, and `variables` must be an object.');
+            }
+        };
+        SubscriptionClient.prototype.buildMessage = function (id, type, payload) {
+            var payloadToReturn = payload && payload.query ? __assign({}, payload, { query: typeof payload.query === 'string' ? payload.query : printer_1.print(payload.query) }) :
+                payload;
+            return {
+                id: id,
+                type: type,
+                payload: payloadToReturn,
+            };
+        };
+        SubscriptionClient.prototype.formatErrors = function (errors) {
+            if (Array.isArray(errors)) {
+                return errors;
+            }
+            if (errors && errors.errors) {
+                return this.formatErrors(errors.errors);
+            }
+            if (errors && errors.message) {
+                return [errors];
+            }
+            return [{
+                    name: 'FormatedError',
+                    message: 'Unknown error',
+                    originalError: errors,
+                }];
+        };
+        SubscriptionClient.prototype.sendMessage = function (id, type, payload) {
+            this.sendMessageRaw(this.buildMessage(id, type, payload));
+        };
+        SubscriptionClient.prototype.sendMessageRaw = function (message) {
+            switch (this.status) {
+                case this.wsImpl.OPEN:
+                    var serializedMessage = JSON.stringify(message);
+                    try {
+                        JSON.parse(serializedMessage);
+                    }
+                    catch (e) {
+                        this.eventEmitter.emit('error', new Error("Message must be JSON-serializable. Got: " + message));
+                    }
+                    this.client.send(serializedMessage);
+                    break;
+                case this.wsImpl.CONNECTING:
+                    this.unsentMessagesQueue.push(message);
+                    break;
+                default:
+                    if (!this.reconnecting) {
+                        this.eventEmitter.emit('error', new Error('A message was not sent because socket is not connected, is closing or ' +
+                            'is already closed. Message was: ' + JSON.stringify(message)));
+                    }
+            }
+        };
+        SubscriptionClient.prototype.generateOperationId = function () {
+            return String(++this.nextOperationId);
+        };
+        SubscriptionClient.prototype.tryReconnect = function () {
+            var _this = this;
+            if (!this.reconnect || this.backoff.attempts >= this.reconnectionAttempts) {
+                return;
+            }
+            if (!this.reconnecting) {
+                Object.keys(this.operations).forEach(function (key) {
+                    _this.unsentMessagesQueue.push(_this.buildMessage(key, messageTypes.default.GQL_START, _this.operations[key].options));
+                });
+                this.reconnecting = true;
+            }
+            this.clearTryReconnectTimeout();
+            var delay = this.backoff.duration();
+            this.tryReconnectTimeoutId = setTimeout(function () {
+                _this.connect();
+            }, delay);
+        };
+        SubscriptionClient.prototype.flushUnsentMessagesQueue = function () {
+            var _this = this;
+            this.unsentMessagesQueue.forEach(function (message) {
+                _this.sendMessageRaw(message);
+            });
+            this.unsentMessagesQueue = [];
+        };
+        SubscriptionClient.prototype.checkConnection = function () {
+            if (this.wasKeepAliveReceived) {
+                this.wasKeepAliveReceived = false;
+                return;
+            }
+            if (!this.reconnecting) {
+                this.close(false, true);
+            }
+        };
+        SubscriptionClient.prototype.checkMaxConnectTimeout = function () {
+            var _this = this;
+            this.clearMaxConnectTimeout();
+            this.maxConnectTimeoutId = setTimeout(function () {
+                if (_this.status !== _this.wsImpl.OPEN) {
+                    _this.reconnecting = true;
+                    _this.close(false, true);
+                }
+            }, this.maxConnectTimeGenerator.duration());
+        };
+        SubscriptionClient.prototype.connect = function () {
+            var _this = this;
+            this.client = new this.wsImpl(this.url, this.wsProtocols);
+            this.checkMaxConnectTimeout();
+            this.client.onopen = function () { return __awaiter(_this, void 0, void 0, function () {
+                var connectionParams, error_1;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            if (!(this.status === this.wsImpl.OPEN)) return [3, 4];
+                            this.clearMaxConnectTimeout();
+                            this.closedByUser = false;
+                            this.eventEmitter.emit(this.reconnecting ? 'reconnecting' : 'connecting');
+                            _a.label = 1;
+                        case 1:
+                            _a.trys.push([1, 3, , 4]);
+                            return [4, this.connectionParams()];
+                        case 2:
+                            connectionParams = _a.sent();
+                            this.sendMessage(undefined, messageTypes.default.GQL_CONNECTION_INIT, connectionParams);
+                            this.flushUnsentMessagesQueue();
+                            return [3, 4];
+                        case 3:
+                            error_1 = _a.sent();
+                            this.sendMessage(undefined, messageTypes.default.GQL_CONNECTION_ERROR, error_1);
+                            this.flushUnsentMessagesQueue();
+                            return [3, 4];
+                        case 4: return [2];
+                    }
+                });
+            }); };
+            this.client.onclose = function () {
+                if (!_this.closedByUser) {
+                    _this.close(false, false);
+                }
+            };
+            this.client.onerror = function (err) {
+                _this.eventEmitter.emit('error', err);
+            };
+            this.client.onmessage = function (_a) {
+                var data = _a.data;
+                _this.processReceivedData(data);
+            };
+        };
+        SubscriptionClient.prototype.processReceivedData = function (receivedData) {
+            var parsedMessage;
+            var opId;
+            try {
+                parsedMessage = JSON.parse(receivedData);
+                opId = parsedMessage.id;
+            }
+            catch (e) {
+                throw new Error("Message must be JSON-parseable. Got: " + receivedData);
+            }
+            if ([messageTypes.default.GQL_DATA,
+                messageTypes.default.GQL_COMPLETE,
+                messageTypes.default.GQL_ERROR,
+            ].indexOf(parsedMessage.type) !== -1 && !this.operations[opId]) {
+                this.unsubscribe(opId);
+                return;
+            }
+            switch (parsedMessage.type) {
+                case messageTypes.default.GQL_CONNECTION_ERROR:
+                    if (this.connectionCallback) {
+                        this.connectionCallback(parsedMessage.payload);
+                    }
+                    break;
+                case messageTypes.default.GQL_CONNECTION_ACK:
+                    this.eventEmitter.emit(this.reconnecting ? 'reconnected' : 'connected');
+                    this.reconnecting = false;
+                    this.backoff.reset();
+                    this.maxConnectTimeGenerator.reset();
+                    if (this.connectionCallback) {
+                        this.connectionCallback();
+                    }
+                    break;
+                case messageTypes.default.GQL_COMPLETE:
+                    this.operations[opId].handler(null, null);
+                    delete this.operations[opId];
+                    break;
+                case messageTypes.default.GQL_ERROR:
+                    this.operations[opId].handler(this.formatErrors(parsedMessage.payload), null);
+                    delete this.operations[opId];
+                    break;
+                case messageTypes.default.GQL_DATA:
+                    var parsedPayload = !parsedMessage.payload.errors ?
+                        parsedMessage.payload : __assign({}, parsedMessage.payload, { errors: this.formatErrors(parsedMessage.payload.errors) });
+                    this.operations[opId].handler(null, parsedPayload);
+                    break;
+                case messageTypes.default.GQL_CONNECTION_KEEP_ALIVE:
+                    var firstKA = typeof this.wasKeepAliveReceived === 'undefined';
+                    this.wasKeepAliveReceived = true;
+                    if (firstKA) {
+                        this.checkConnection();
+                    }
+                    if (this.checkConnectionIntervalId) {
+                        clearInterval(this.checkConnectionIntervalId);
+                        this.checkConnection();
+                    }
+                    this.checkConnectionIntervalId = setInterval(this.checkConnection.bind(this), this.wsTimeout);
+                    break;
+                default:
+                    throw new Error('Invalid message type!');
+            }
+        };
+        SubscriptionClient.prototype.unsubscribe = function (opId) {
+            if (this.operations[opId]) {
+                delete this.operations[opId];
+                this.setInactivityTimeout();
+                this.sendMessage(opId, messageTypes.default.GQL_STOP, undefined);
+            }
+        };
+        return SubscriptionClient;
+    }());
+    exports.SubscriptionClient = SubscriptionClient;
+    //# sourceMappingURL=client.js.map
+    });
+
+    unwrapExports(client);
+    var client_1 = client.SubscriptionClient;
+
+    var WebSocketLink = (function (_super) {
+        __extends(WebSocketLink, _super);
+        function WebSocketLink(paramsOrClient) {
+            var _this = _super.call(this) || this;
+            if (paramsOrClient instanceof client_1) {
+                _this.subscriptionClient = paramsOrClient;
+            }
+            else {
+                _this.subscriptionClient = new client_1(paramsOrClient.uri, paramsOrClient.options, paramsOrClient.webSocketImpl);
+            }
+            return _this;
+        }
+        WebSocketLink.prototype.request = function (operation) {
+            return this.subscriptionClient.request(operation);
+        };
+        return WebSocketLink;
+    }(ApolloLink));
+    //# sourceMappingURL=bundle.esm.js.map
+
     function useLocalStorage(store, key) {
       //console.log('imported useLocalStorage');
       const json = localStorage.getItem(key);
@@ -14573,7 +15488,7 @@ var app = (function () {
     			header.$$.fragment.c();
     			t1 = space();
     			router.$$.fragment.c();
-    			add_location(main, file$f, 105, 0, 3381);
+    			add_location(main, file$f, 147, 0, 4582);
     		},
 
     		l: function claim(nodes) {
@@ -14629,20 +15544,51 @@ var app = (function () {
     }
 
     function instance$e($$self, $$props, $$invalidate) {
-    	let $isLoggedIn, $keepMeLoggedIn, $location;
+    	let $isLoggedIn, $keepMeLoggedIn;
 
     	validate_store(isLoggedIn, 'isLoggedIn');
     	subscribe($$self, isLoggedIn, $$value => { $isLoggedIn = $$value; $$invalidate('$isLoggedIn', $isLoggedIn); });
     	validate_store(keepMeLoggedIn, 'keepMeLoggedIn');
     	subscribe($$self, keepMeLoggedIn, $$value => { $keepMeLoggedIn = $$value; $$invalidate('$keepMeLoggedIn', $keepMeLoggedIn); });
-    	validate_store(location, 'location');
-    	subscribe($$self, location, $$value => { $location = $$value; $$invalidate('$location', $location); });
 
     	
 
-      const client = new DefaultClient({
-        uri: "http://localhost:8000/graphql"
-        // uri: "https://swapboard.herokuapp.com/graphql"
+      const HTTP_GRAPHQL_ENDPOINT =
+        (window.location.protocol === "https" ? "https" : "http") +
+        "://" +
+        window.location.host +
+        "/graphql";
+
+      const WS_GRAPHQL_ENDPOINT =
+        (window.location.protocol === "https" ? "wss" : "ws") +
+        "://" +
+        window.location.host +
+        "/graphql";
+
+      const httpLink = new HttpLink({
+        uri: HTTP_GRAPHQL_ENDPOINT
+        // credentials: 'same-origin'
+      });
+
+      const wsLink = new WebSocketLink({
+        uri: WS_GRAPHQL_ENDPOINT,
+        options: {
+          reconnect: true
+        }
+      });
+
+      const link = split(
+        ({ query }) => {
+          const { kind, operation } = getMainDefinition(query);
+          return kind === "OperationDefinition" && operation === "subscription";
+        },
+        wsLink,
+        httpLink
+      );
+
+      const client = new ApolloClient({
+        link,
+        cache: new InMemoryCache()
       });
 
       setClient(client);
@@ -14673,7 +15619,11 @@ var app = (function () {
             // localStorage.removeItem("new-tab-event");
           }
         } else if (event.key == "currently-logged-in-event") {
-          isLoggedIn.set(true);
+          if ($isLoggedIn === false) {
+            isLoggedIn.set(true);
+            push("/dashboard/");
+            tokenRefreshTimeoutFunc(client);
+          }
           // localStorage.removeItem("currently-logged-in-event");
         } else if (event.key == "start-timeout-event") {
           setTimeout(() => {
@@ -14694,25 +15644,23 @@ var app = (function () {
         }
       });
 
-      if ($keepMeLoggedIn === true || $isLoggedIn === true) {
+      if ($keepMeLoggedIn === true && $isLoggedIn === false) {
         isLoggedIn.set(true);
+        tokenRefreshTimeoutFunc(client);
+      } else if ($isLoggedIn === true) {
         tokenRefreshTimeoutFunc(client);
       } else {
         localStorage.setItem("new-tab-event", "newtab" + Math.random());
       }
 
-      onMount(() => {});
-
-    	$$self.$$.update = ($$dirty = { $isLoggedIn: 1, $location: 1 }) => {
-    		if ($$dirty.$isLoggedIn || $$dirty.$location) { if ($isLoggedIn === false) {
+    	$$self.$$.update = ($$dirty = { $isLoggedIn: 1 }) => {
+    		if ($$dirty.$isLoggedIn) { if ($isLoggedIn === false) {
             // tokenRefreshTimeoutFunc(client);
             // if (!$location.includes("/confirminvitation/")) {
             //   push("/dashboard/");
             // }
             clearTokenRefreshTimeout();
-            if (!$location.includes("/confirminvitation/")) {
-              push("/login");
-            }
+            push("/login");
           } }
     	};
 
