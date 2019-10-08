@@ -4,9 +4,11 @@
   import { CONFIRM_INVITATION } from "../queries.js";
   import { invitations } from "../store.js";
   import { notifications } from "../Noto.svelte";
+  import { formatDate } from "timeUtils";
 
   export let invitation;
   const client = getClient();
+  let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
 
   async function confirmInvitation() {
     try {
@@ -42,10 +44,12 @@
 
 <main in:fade={{ transition: 500 }}>
   <div class="card">
-    <div class="card-header">Invitation on {invitation.created}</div>
+    <div class="card-header">
+      Invitation sent on {formatDate(new Date(invitation.created), dateFormat)}
+    </div>
     <div class="card-body">
       <h5 class="card-title">
-        Invitation from {invitation.company.userprofile.companyName}
+        From {invitation.company.userprofile.companyName}
       </h5>
       <p class="card-text">
         Please accept invitation to post and swap shifts with your colleagues.

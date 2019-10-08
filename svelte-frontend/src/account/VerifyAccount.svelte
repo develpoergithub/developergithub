@@ -78,7 +78,7 @@
 <main>
   <div class="card" in:fade={{ duration: 500 }}>
     <div class="card-body">
-      <div class="card-header rounded-top">
+      <div class="card-header">
         <h3 class="card-title">Verify Account</h3>
         <h6 class="card-subtitle mb-2">
           Please enter your email and the code that was sent to your email
@@ -95,6 +95,8 @@
               id="exampleInputEmail1"
               aria-describedby="emailHelp"
               placeholder="Enter email" />
+          </div>
+          <div class="form-group">
             <input
               bind:value={code}
               type="text"
@@ -104,7 +106,6 @@
               placeholder="Enter code" />
           </div>
 
-          <div class="form-group form-check" />
           <button type="submit" class="btn btn-primary">
             <h5>Confirm Account</h5>
           </button>

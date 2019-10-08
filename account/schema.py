@@ -9,6 +9,7 @@ from .models import User, UserConnection, UserActivation
 import graphql_jwt
 from graphql_jwt.decorators import login_required
 import channels_graphql_ws
+from user_profile.schema import UserProfileType
 
 
 class UserType(DjangoObjectType):
@@ -130,6 +131,13 @@ class ConfirmUserConnection(graphene.Mutation):
                 "User Must be an Employee to Perform this Operation")
         try:
             user_connection = UserConnection.objects.get(id=user_connection_id)
+
+            if user_connection.employee == info.context.user:
+                return ConfirmUserConnection(user_connection=user_connection)
+
+            if user_connection.employee_email != info.context.user.email:
+                raise Exception("Can not accept an invite that is not yours")
+
             user_connection.employee = info.context.user
             user_connection.is_confirmed = True
             user_connection.save()
@@ -230,19 +238,22 @@ class TestMutation(graphene.Mutation):
         groupId = graphene.ID()
 
     async def mutate(self, info, groupId, message):
-        await TestSubscription.broadcast_async(
-            group=groupId,
-            payload=message
-        )
+        if info.context.user.is_authenticated:
+            await TestSubscription.broadcast_async(
+                group=groupId,
+                payload=info.context.user
+            )
 
-        return TestMutation(worked=True)
+            return TestMutation(worked=True)
+
+        return TestMutation(worked=False)
 
 
 class TestSubscription(channels_graphql_ws.Subscription):
     """Simple GraphQL subscription."""
 
     # Subscription payload.
-    event = graphene.String()
+    event = graphene.Field(UserType)
 
     class Arguments:
         """That is how subscription arguments are defined."""
@@ -253,7 +264,9 @@ class TestSubscription(channels_graphql_ws.Subscription):
         """Called when user subscribes."""
 
         # Return the list of subscription group names.
-        return [groupId]
+        if info.context.user.is_authenticated:
+            return [str(info.context.user.id)]
+        raise Exception("You Must Be Logged In To Subscribe")
 
     @staticmethod
     def publish(payload, info, groupId):

@@ -7,6 +7,10 @@
   import VerifyAccount from "./account/VerifyAccount.svelte";
   import DashBoard from "./dashboard/DashBoard.svelte";
   import ConfirmInvitation from "./ConfirmInvitation.svelte";
+  import InviteEmployee from "./dashboard/InviteEmployee.svelte";
+  import Invitations from "./dashboard/Invitations.svelte";
+  import Shifts from "./dashboard/Shifts.svelte";
+  import PostShift from "./dashboard/PostShift.svelte";
   import NotFound from "./NotFound.svelte";
 
   export const routes = {
@@ -16,8 +20,12 @@
     "/verifyaccount": VerifyAccount,
     "/forgotpassword": ForgotPassword,
     "/recoveraccount": RecoverAccount,
-    "/dashboard/*": DashBoard,
+    "/dashboard": DashBoard,
     "/confirminvitation/:id": ConfirmInvitation,
+    "/dashboard/invite": InviteEmployee,
+    "/dashboard/invitations": Invitations,
+    "/dashboard/shifts": Shifts,
+    "/dashboard/postshift": PostShift,
     "*": NotFound
   };
 </script>

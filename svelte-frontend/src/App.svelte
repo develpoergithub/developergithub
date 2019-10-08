@@ -21,7 +21,8 @@
     isLoggedIn,
     lastLoggedIn,
     refreshToken,
-    user
+    user,
+    menuDisplayed
   } from "./store.js";
   import { useLocalStorage, useSessionStorage } from "./storage.js";
   import { REFRESH_TOKEN } from "./queries.js";
@@ -124,8 +125,10 @@
 
   if ($keepMeLoggedIn === true && $isLoggedIn === false) {
     isLoggedIn.set(true);
+    menuDisplayed.set(true);
     tokenRefreshTimeoutFunc(client);
   } else if ($isLoggedIn === true) {
+    menuDisplayed.set(true);
     tokenRefreshTimeoutFunc(client);
   } else {
     localStorage.setItem("new-tab-event", "newtab" + Math.random());
@@ -139,14 +142,104 @@
     clearTokenRefreshTimeout();
     push("/login");
   }
+
+  $: if (window.screen.availWidth < 640) {
+    menuDisplayed.set(false);
+  }
 </script>
 
 <style>
+  #wrapper {
+    margin-top: 55px;
+  }
+  /* Sidebar */
+  #sidebar-wrapper {
+    z-index: 1;
+    position: fixed;
+    width: 0px;
+    height: 100%;
+    overflow-y: hidden;
+    background: grey;
+    opacity: 0.9;
+  }
 
+  /* Always take up entire screen */
+  #page-content-wrapper {
+    width: 100%;
+    position: absolute;
+    padding: 15px;
+  }
+
+  /* Change with of sidebar from 0 to 250px */
+  #wrapper.menuDisplayed #sidebar-wrapper {
+    width: 250px;
+  }
+
+  /* Since we added left padding, we need to shrink the width by 250px */
+  #wrapper.menuDisplayed #page-content-wrapper {
+    padding-left: 260px;
+  }
+
+  /* Sidebar styling - the entire ul list */
+  .sidebar-nav {
+    padding: 0;
+    list-style: none;
+  }
+
+  .sidebar-nav li {
+    text-indent: 20px;
+    line-height: 40px;
+  }
+
+  .sidebar-nav li a {
+    display: block;
+    text-decoration: none;
+    color: #ddd;
+  }
+
+  .sidebar-nav li a:hover {
+    background: #16a085;
+  }
+
+  @media screen and (max-width: 640px) {
+    #wrapper.menuDisplayed #sidebar-wrapper {
+      display: none;
+    }
+
+    #wrapper.menuDisplayed #page-content-wrapper {
+      padding-left: 0px;
+    }
+  }
 </style>
 
 <main>
-  <Noto />
   <Header />
-  <Router {routes} />
+  <div id="wrapper" class={$menuDisplayed ? 'menuDisplayed' : ''}>
+
+    <div id="sidebar-wrapper" class="">
+
+      <ul class="sidebar-nav">
+        {#if !$user.isCompany}
+          <li>
+            <a href="#/dashboard/postshift">Post Shift</a>
+          </li>
+        {/if}
+        <li>
+          <a href="#/dashboard/shifts">Shift</a>
+        </li>
+        <li>
+          {#if $user.isCompany}
+            <a href="#/dashboard/invite">Invite</a>
+          {:else}
+            <a href="#/dashboard/invitations">Invitations</a>
+          {/if}
+        </li>
+      </ul>
+    </div>
+    <div id="page-content-wrapper">
+      <Noto />
+
+      <Router {routes} />
+    </div>
+  </div>
 </main>

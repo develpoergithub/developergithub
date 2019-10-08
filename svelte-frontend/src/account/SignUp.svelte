@@ -118,33 +118,33 @@
     padding: 10px 0px;
     text-align: center;
   }
-  .note {
-    margin-top: -12px;
-  }
 </style>
 
 <AuthRoute />
 <main>
   <div class="card .mx-auto" in:fade={{ duration: 500 }}>
     <div class="card-body">
-      <div class="card-header rounded-top">
+      <div class="card-header">
         <h3 class="card-title">Create Account</h3>
         <h6 class="card-subtitle mb-2">
           Please fill in the form below to create an account on SwapBoard
         </h6>
       </div>
-      <form on:submit|preventDefault={handleSubmit}>
+      <form class="form-group" on:submit|preventDefault={handleSubmit}>
         <fieldset disabled={formIsDisabled}>
-          <div class="input-group mb-3">
-            <select bind:value={selectedUserType} class="custom-select">
+          <div class="form-group">
+            <select
+              aria-describedby="inputGroupSelect01"
+              bind:value={selectedUserType}
+              class="custom-select">
               {#each userTypeChoices as choice}
                 <option value={choice}>{choice.text}</option>
               {/each}
             </select>
+            <small id="inputGroupSelect01" class="form-text text-muted note">
+              Please note that you can not change this later.
+            </small>
           </div>
-          <small id="inputGroupSelect01" class="form-text text-muted note">
-            Please note that you can not change this later.
-          </small>
           <div class="form-group">
             <!-- <label for="exampleInputPassword1">Password</label> -->
             <input

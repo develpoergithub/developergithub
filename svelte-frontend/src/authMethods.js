@@ -5,7 +5,8 @@ import {
 	keepMeLoggedIn,
 	lastLoggedIn,
 	isLoggedIn,
-	user
+	user,
+	menuDisplayed
 } from './store.js';
 import {
 	CREATE_USER,
@@ -53,7 +54,7 @@ export function tokenRefreshTimeoutFunc(client) {
 		return console.log('Already started Timeout, exiting function!!!');
 	}
 
-	const REFRESH_EXPIRATION_TIME_IN_MINUTES = 15;
+	const REFRESH_EXPIRATION_TIME_IN_MINUTES = 60;
 
 	let prevLoggedInDate = JSON.parse(localStorage.getItem('lastLoggedIn'));
 	let oldToken = JSON.parse(localStorage.getItem('refreshToken'));
@@ -73,9 +74,9 @@ export function tokenRefreshTimeoutFunc(client) {
 		let remainingTime = refreshExpirationTime - timeDifference;
 		clearTokenRefreshTimeout();
 		tokenRefreshTimeout = setTimeout(
-			remainingTime * 60000,
-			// Must convert minutes to milliseconds
 			tokenRefresh,
+			// Must convert minutes to milliseconds
+			remainingTime * 60000,
 			client,
 			oldToken
 		);
@@ -136,6 +137,7 @@ export function logout() {
 	keepMeLoggedIn.set(false);
 	isLoggedIn.set(false);
 	user.set({});
+	menuDisplayed.set(false);
 	sessionStorage.setItem('startedTimeoutSession', JSON.stringify(false));
 	localStorage.setItem('startedTimeout', JSON.stringify(false));
 	localStorage.setItem('logout-event', 'logout' + Math.random());

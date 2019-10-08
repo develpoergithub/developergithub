@@ -1,10 +1,20 @@
 <script>
   import { push } from "svelte-spa-router";
-  import { keepMeLoggedIn, isLoggedIn, refreshToken, user } from "./store.js";
+  import {
+    keepMeLoggedIn,
+    isLoggedIn,
+    refreshToken,
+    user,
+    menuDisplayed
+  } from "./store.js";
   import { logout } from "./authMethods.js";
 
   function handleLogout() {
     logout();
+  }
+
+  function toggleMenu() {
+    menuDisplayed.set(!$menuDisplayed);
   }
 </script>
 
@@ -12,10 +22,28 @@
   .navbar {
     max-height: 55px !important;
   }
+  .navbar-brand {
+    margin-left: 10px;
+  }
+
+  @media screen and (max-width: 640px) {
+    #menu-toggler {
+      display: none;
+    }
+  }
+
+  .dropdown-menu {
+    z-index: 99999;
+  }
 </style>
 
 <main>
-  <nav class="navbar sticky-top navbar-expand-sm navbar-light bg-light">
+  <nav class="navbar fixed-top navbar-expand-sm navbar-light bg-light">
+    {#if $isLoggedIn}
+      <button on:click={toggleMenu} id="menu-toggler" class="btn bg-light">
+        <span class="navbar-toggler-icon" />
+      </button>
+    {/if}
     <a class="navbar-brand" href="#/">SWAPBOARD</a>
     <button
       class="navbar-toggler"
@@ -30,19 +58,22 @@
     {#if $isLoggedIn}
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ml-auto">
-          {#if $user.isCompany}
+          <!-- {#if $user.isCompany}
             <li class="nav-item">
               <a class="nav-link" href="#/dashboard/invite">Invite Employee</a>
             </li>
           {/if}
           {#if !$user.isCompany}
             <li class="nav-item">
+              <a class="nav-link" href="#/dashboard/postshift">Post Shift</a>
+            </li>
+            <li class="nav-item">
               <a class="nav-link" href="#/dashboard/shifts">Shifts</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="#/dashboard/invitations">Invitations</a>
             </li>
-          {/if}
+          {/if} -->
           <li class="nav-item dropdown">
             <a
               class="nav-link dropdown-toggle"

@@ -51,7 +51,7 @@
   }
   .card {
     width: 22rem;
-    height: 28rem;
+    height: 30rem;
   }
   h3 {
     text-align: center;
@@ -94,7 +94,7 @@
 <main>
   <div class="card" in:fade={{ duration: 500 }}>
     <div class="card-body">
-      <div class="card-header rounded-top">
+      <div class="card-header">
         <h3 class="card-title">Log into SwapBoard</h3>
         <h6 class="card-subtitle mb-2">
           Please enter your email and password to login

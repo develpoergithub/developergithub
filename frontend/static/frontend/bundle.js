@@ -5,6 +5,12 @@ var app = (function () {
 
     function noop() { }
     const identity = x => x;
+    function assign(tar, src) {
+        // @ts-ignore
+        for (const k in src)
+            tar[k] = src[k];
+        return tar;
+    }
     function add_location(element, file, line, column, char) {
         element.__svelte_meta = {
             loc: { file, line, column, char }
@@ -35,6 +41,22 @@ var app = (function () {
         component.$$.on_destroy.push(unsub.unsubscribe
             ? () => unsub.unsubscribe()
             : unsub);
+    }
+    function create_slot(definition, ctx, fn) {
+        if (definition) {
+            const slot_ctx = get_slot_context(definition, ctx, fn);
+            return definition[0](slot_ctx);
+        }
+    }
+    function get_slot_context(definition, ctx, fn) {
+        return definition[1]
+            ? assign({}, assign(ctx.$$scope.ctx, definition[1](fn ? fn(ctx) : {})))
+            : ctx.$$scope.ctx;
+    }
+    function get_slot_changes(definition, ctx, changed, fn) {
+        return definition[1]
+            ? assign({}, assign(ctx.$$scope.changed || {}, definition[1](fn ? fn(changed) : {})))
+            : ctx.$$scope.changed || {};
     }
 
     const is_client = typeof window !== 'undefined';
@@ -140,6 +162,9 @@ var app = (function () {
         const selected_option = select.querySelector(':checked') || select.options[0];
         return selected_option && selected_option.__value;
     }
+    function toggle_class(element, name, toggle) {
+        element.classList[toggle ? 'add' : 'remove'](name);
+    }
     function custom_event(type, detail) {
         const e = document.createEvent('CustomEvent');
         e.initCustomEvent(type, false, false, detail);
@@ -214,11 +239,34 @@ var app = (function () {
     function onMount(fn) {
         get_current_component().$$.on_mount.push(fn);
     }
+    function createEventDispatcher() {
+        const component = current_component;
+        return (type, detail) => {
+            const callbacks = component.$$.callbacks[type];
+            if (callbacks) {
+                // TODO are there situations where events could be dispatched
+                // in a server (non-DOM) environment?
+                const event = custom_event(type, detail);
+                callbacks.slice().forEach(fn => {
+                    fn.call(component, event);
+                });
+            }
+        };
+    }
     function setContext(key, context) {
         get_current_component().$$.context.set(key, context);
     }
     function getContext(key) {
         return get_current_component().$$.context.get(key);
+    }
+    // TODO figure out if we still want to support
+    // shorthand events, or if we want to implement
+    // a real bubbling mechanism
+    function bubble(component, event) {
+        const callbacks = component.$$.callbacks[event.type];
+        if (callbacks) {
+            callbacks.slice().forEach(fn => fn(event));
+        }
     }
 
     const dirty_components = [];
@@ -233,8 +281,15 @@ var app = (function () {
             resolved_promise.then(flush);
         }
     }
+    function tick() {
+        schedule_update();
+        return resolved_promise;
+    }
     function add_render_callback(fn) {
         render_callbacks.push(fn);
+    }
+    function add_flush_callback(fn) {
+        flush_callbacks.push(fn);
     }
     function flush() {
         const seen_callbacks = new Set();
@@ -446,6 +501,11 @@ var app = (function () {
     }
 
     const globals = (typeof window !== 'undefined' ? window : global);
+
+    function destroy_block(block, lookup) {
+        block.d(1);
+        lookup.delete(block.key);
+    }
     function outro_and_destroy_block(block, lookup) {
         transition_out(block, 1, 1, () => {
             lookup.delete(block.key);
@@ -525,6 +585,13 @@ var app = (function () {
         while (n)
             insert(new_blocks[n - 1]);
         return new_blocks;
+    }
+
+    function bind(component, name, callback) {
+        if (component.$$.props.indexOf(name) === -1)
+            return;
+        component.$$.bound[name] = callback;
+        callback(component.$$.ctx[name]);
     }
     function mount_component(component, target, anchor) {
         const { fragment, on_mount, on_destroy, after_update } = component.$$;
@@ -1079,6 +1146,11 @@ var app = (function () {
     	}
     }
 
+    function cubicOut(t) {
+        const f = t - 1.0;
+        return f * f * f + 1.0;
+    }
+
     function fade(node, { delay = 0, duration = 400 }) {
         const o = +getComputedStyle(node).opacity;
         return {
@@ -1087,15 +1159,30 @@ var app = (function () {
             css: t => `opacity: ${t * o}`
         };
     }
+    function fly(node, { delay = 0, duration = 400, easing = cubicOut, x = 0, y = 0, opacity = 0 }) {
+        const style = getComputedStyle(node);
+        const target_opacity = +style.opacity;
+        const transform = style.transform === 'none' ? '' : style.transform;
+        const od = target_opacity * (1 - opacity);
+        return {
+            delay,
+            duration,
+            easing,
+            css: (t, u) => `
+			transform: ${transform} translate(${(1 - t) * x}px, ${(1 - t) * y}px);
+			opacity: ${target_opacity - (od * u)}`
+        };
+    }
 
     const isLoggedIn = writable(false);
     const keepMeLoggedIn = writable(false);
     const lastLoggedIn = writable(Number);
-    const refreshToken = writable("");
+    const refreshToken = writable('');
     const user = writable({});
     const invitations = writable([]);
     const connections = writable([]);
-    const shifts = writable([]);
+    const myShifts = writable([]);
+    const menuDisplayed = writable(false);
 
     /* src\AuthRoute.svelte generated by Svelte v3.6.7 */
 
@@ -2268,7 +2355,7 @@ var app = (function () {
         return query;
     }
 
-    function assign(target) {
+    function assign$1(target) {
         var sources = [];
         for (var _i = 1; _i < arguments.length; _i++) {
             sources[_i - 1] = arguments[_i];
@@ -2367,7 +2454,7 @@ var app = (function () {
                 valueToObjectRepresentation(defaultValueObj, variable.name, defaultValue);
                 return defaultValueObj;
             });
-            return assign.apply(void 0, [{}].concat(defaultValues));
+            return assign$1.apply(void 0, [{}].concat(defaultValues));
         }
         return {};
     }
@@ -6136,7 +6223,7 @@ var app = (function () {
         }
     }();
 
-    var bind = Slot.bind, noContext = Slot.noContext;
+    var bind$1 = Slot.bind, noContext = Slot.noContext;
     //# sourceMappingURL=context.esm.js.map
 
     function defaultDispose() { }
@@ -6765,7 +6852,7 @@ var app = (function () {
         StoreReader.prototype.diffQueryAgainstStore = function (_a) {
             var store = _a.store, query = _a.query, variables = _a.variables, previousResult = _a.previousResult, _b = _a.returnPartialData, returnPartialData = _b === void 0 ? true : _b, _c = _a.rootId, rootId = _c === void 0 ? 'ROOT_QUERY' : _c, fragmentMatcherFunction = _a.fragmentMatcherFunction, config = _a.config;
             var queryDefinition = getQueryDefinition(query);
-            variables = assign({}, getDefaultValues(queryDefinition), variables);
+            variables = assign$1({}, getDefaultValues(queryDefinition), variables);
             var context = {
                 store: store,
                 dataIdFromObject: config && config.dataIdFromObject,
@@ -7095,7 +7182,7 @@ var app = (function () {
                     context: {
                         store: store,
                         processedData: {},
-                        variables: assign({}, getDefaultValues(operationDefinition), variables),
+                        variables: assign$1({}, getDefaultValues(operationDefinition), variables),
                         dataIdFromObject: dataIdFromObject,
                         fragmentMap: createFragmentMap(getFragmentDefinitions(document)),
                         fragmentMatcherFunction: fragmentMatcherFunction,
@@ -10995,155 +11082,245 @@ var app = (function () {
     var src = gql;
 
     const CREATE_USER = src`
-  mutation(
-    $isCompany: Boolean!
-    $name: String!
-    $email: String!
-    $password: String!
-  ) {
-    createUser(
-      isCompany: $isCompany
-      name: $name
-      email: $email
-      password: $password
-    ) {
-      user {
-        id
-        username
-        isActive
-      }
-    }
-  }
+	mutation(
+		$isCompany: Boolean!
+		$name: String!
+		$email: String!
+		$password: String!
+	) {
+		createUser(
+			isCompany: $isCompany
+			name: $name
+			email: $email
+			password: $password
+		) {
+			user {
+				id
+				username
+				isActive
+			}
+		}
+	}
 `;
 
     const ACTIVATE_USER = src`
-  mutation($email: String!, $code: String!) {
-    activateUser(email: $email, code: $code) {
-      activated
-    }
-  }
+	mutation($email: String!, $code: String!) {
+		activateUser(email: $email, code: $code) {
+			activated
+		}
+	}
 `;
 
     const LOGIN_USER = src`
-  mutation($email: String!, $password: String!) {
-    tokenAuth(email: $email, password: $password) {
-      token
-      refreshToken
-    }
-  }
+	mutation($email: String!, $password: String!) {
+		tokenAuth(email: $email, password: $password) {
+			token
+			refreshToken
+		}
+	}
 `;
 
     const GET_USER = src`
-  {
-    me {
-      id
-      dateJoined
-      email
-      isCompany
-    }
-  }
+	{
+		me {
+			id
+			dateJoined
+			email
+			isCompany
+		}
+	}
 `;
 
     const REFRESH_TOKEN = src`
-  mutation($refreshToken: String!) {
-    refreshToken(refreshToken: $refreshToken) {
-      token
-      refreshToken
-      payload
-    }
-  }
+	mutation($refreshToken: String!) {
+		refreshToken(refreshToken: $refreshToken) {
+			token
+			refreshToken
+			payload
+		}
+	}
 `;
 
     const SEND_INVITATION = src`
-  mutation($employeeEmail: String!) {
-    createUserConnection(employeeEmail: $employeeEmail) {
-      userConnection {
-        id
-        employeeEmail
-        company {
-          id
-          email
-        }
-        isConfirmed
-      }
-    }
-  }
+	mutation($employeeEmail: String!) {
+		createUserConnection(employeeEmail: $employeeEmail) {
+			userConnection {
+				id
+				employeeEmail
+				company {
+					id
+					email
+				}
+				isConfirmed
+			}
+		}
+	}
 `;
 
     const GET_INVITATIONS = src`
-  query {
-    invitations {
-      id
-      isConfirmed
-      employeeEmail
-      company {
-        userprofile {
-          companyName
-        }
-      }
-      created
-    }
-  }
+	query {
+		invitations {
+			id
+			isConfirmed
+			employeeEmail
+			company {
+				userprofile {
+					companyName
+				}
+			}
+			created
+		}
+	}
 `;
 
     const CONFIRM_INVITATION = src`
-  mutation($invitationId: ID!) {
-    confirmUserConnection(userConnectionId: $invitationId) {
-      userConnection {
-        id
-        isConfirmed
-        employeeEmail
-        company {
-          userprofile {
-            companyName
-          }
-        }
-        created
-      }
-    }
-  }
+	mutation($invitationId: ID!) {
+		confirmUserConnection(userConnectionId: $invitationId) {
+			userConnection {
+				id
+				isConfirmed
+				employeeEmail
+				company {
+					userprofile {
+						companyName
+					}
+				}
+				created
+			}
+		}
+	}
 `;
 
     const GET_CONNECTIONS = src`
-  query {
-    connections {
-      id
-      created
-      company {
-        id
-        userprofile {
-          companyName
-        }
-      }
-      employee {
-        id
-        userprofile {
-          firstName
-          lastName
-        }
-      }
-    }
-  }
+	query {
+		connections {
+			id
+			created
+			company {
+				id
+				userprofile {
+					companyName
+				}
+			}
+			employee {
+				id
+				userprofile {
+					firstName
+					lastName
+				}
+			}
+		}
+	}
 `;
 
     const GET_SHIFTS = src`
-  query($companyId: ID!) {
-    shifts(companyId: $companyId) {
-      id
-      fromTime
-      toTime
-      note
-      isSponsored
-      postedBy {
-        id
-        email
-      }
-      postedTo {
-        id
-        email
-      }
-    }
-  }
+	query($companyId: ID!) {
+		shifts(companyId: $companyId) {
+			id
+			fromTime
+			toTime
+			note
+			isSponsored
+			postedBy {
+				id
+				email
+				userprofile {
+					firstName
+					lastName
+				}
+			}
+			postedTo {
+				id
+				email
+				userprofile {
+					companyName
+				}
+			}
+		}
+	}
+`;
+
+    const POST_SHIFT = src`
+	mutation(
+		$fromTime: DateTime!
+		$toTime: DateTime!
+		$note: String!
+		$isSponsored: Boolean!
+		$companyId: ID!
+	) {
+		createShift(
+			fromTime: $fromTime
+			toTime: $toTime
+			note: $note
+			isSponsored: $isSponsored
+			companyId: $companyId
+		) {
+			shift {
+				id
+				fromTime
+				toTime
+				postedBy {
+					email
+					userprofile {
+						firstName
+						lastName
+					}
+				}
+				postedTo {
+					email
+					userprofile {
+						companyName
+					}
+				}
+				note
+				isSponsored
+				created
+			}
+		}
+	}
+`;
+
+    const PROPOSE_SHIFT = src`
+	mutation($proposedShiftId: ID!, $shiftId: ID!) {
+		createShiftConnection(
+			proposedShiftId: $proposedShiftId
+			shiftId: $shiftId
+		) {
+			shiftConnection {
+				id
+				created
+				isAccepted
+				shift {
+					id
+					fromTime
+					toTime
+					isSponsored
+					postedBy {
+						id
+						email
+						userprofile {
+							firstName
+							lastName
+						}
+					}
+				}
+				proposedShift {
+					id
+					fromTime
+					toTime
+					isSponsored
+					postedBy {
+						id
+						email
+						userprofile {
+							firstName
+							lastName
+						}
+					}
+				}
+			}
+		}
+	}
 `;
 
     /* src\Notification.svelte generated by Svelte v3.6.7 */
@@ -11525,128 +11702,129 @@ var app = (function () {
     let tokenRefreshTimeout;
 
     async function tokenRefresh(client, oldToken) {
-      try {
-        await mutate(client, {
-          mutation: REFRESH_TOKEN,
-          variables: { refreshToken: oldToken }
-        }).then(result => {
-          const newToken = result.data.refreshToken.refreshToken;
-          refreshToken.set(newToken);
-          lastLoggedIn.set(Date.now());
-          isLoggedIn.set(true);
-          tokenRefreshTimeoutFunc(client);
-          // push("/dashboard/");
-        });
-      } catch (error) {
-        // console.log(error);
-        isLoggedIn.set(false);
-      }
+    	try {
+    		await mutate(client, {
+    			mutation: REFRESH_TOKEN,
+    			variables: { refreshToken: oldToken }
+    		}).then(result => {
+    			const newToken = result.data.refreshToken.refreshToken;
+    			refreshToken.set(newToken);
+    			lastLoggedIn.set(Date.now());
+    			isLoggedIn.set(true);
+    			tokenRefreshTimeoutFunc(client);
+    			// push("/dashboard/");
+    		});
+    	} catch (error) {
+    		// console.log(error);
+    		isLoggedIn.set(false);
+    	}
     }
 
     function tokenRefreshTimeoutFunc(client) {
-      if (localStorage.getItem("startedTimeout") === null) {
-        localStorage.setItem("startedTimeout", JSON.stringify(false));
-      }
+    	if (localStorage.getItem('startedTimeout') === null) {
+    		localStorage.setItem('startedTimeout', JSON.stringify(false));
+    	}
 
-      if (sessionStorage.getItem("startedTimeoutSession") === null) {
-        sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
-      }
+    	if (sessionStorage.getItem('startedTimeoutSession') === null) {
+    		sessionStorage.setItem('startedTimeoutSession', JSON.stringify(false));
+    	}
 
-      const isStartedTimeout = JSON.parse(localStorage.getItem("startedTimeout"));
-      const isSessionTimeout = JSON.parse(
-        sessionStorage.getItem("startedTimeoutSession")
-      );
+    	const isStartedTimeout = JSON.parse(localStorage.getItem('startedTimeout'));
+    	const isSessionTimeout = JSON.parse(
+    		sessionStorage.getItem('startedTimeoutSession')
+    	);
 
-      if (isStartedTimeout === true && isSessionTimeout === false) {
-        return console.log("Already started Timeout, exiting function!!!");
-      }
+    	if (isStartedTimeout === true && isSessionTimeout === false) {
+    		return console.log('Already started Timeout, exiting function!!!');
+    	}
 
-      const REFRESH_EXPIRATION_TIME_IN_MINUTES = 15;
+    	const REFRESH_EXPIRATION_TIME_IN_MINUTES = 60;
 
-      let prevLoggedInDate = JSON.parse(localStorage.getItem("lastLoggedIn"));
-      let oldToken = JSON.parse(localStorage.getItem("refreshToken"));
+    	let prevLoggedInDate = JSON.parse(localStorage.getItem('lastLoggedIn'));
+    	let oldToken = JSON.parse(localStorage.getItem('refreshToken'));
 
-      // Must convert timeDifference to minutes
-      let timeDifference = Math.abs(Date.now() - prevLoggedInDate) / 60000;
-      // Must substract 10% from the constant refresh expiration time
-      let refreshExpirationTime =
-        REFRESH_EXPIRATION_TIME_IN_MINUTES -
-        REFRESH_EXPIRATION_TIME_IN_MINUTES * 0.1;
+    	// Must convert timeDifference to minutes
+    	let timeDifference = Math.abs(Date.now() - prevLoggedInDate) / 60000;
+    	// Must subtract 10% from the constant refresh expiration time
+    	let refreshExpirationTime =
+    		REFRESH_EXPIRATION_TIME_IN_MINUTES -
+    		REFRESH_EXPIRATION_TIME_IN_MINUTES * 0.1;
 
-      if (timeDifference > refreshExpirationTime) {
-        //console.log(timeDifference + " > " + refreshExpirationTime);
-        tokenRefresh(client, oldToken);
-      } else {
-        //console.log(timeDifference + " < " + refreshExpirationTime);
-        let remainingTime = refreshExpirationTime - timeDifference;
-        clearTokenRefreshTimeout();
-        tokenRefreshTimeout = setTimeout(
-          remainingTime * 60000,
-          // Must convert minutes to milliseconds
-          tokenRefresh,
-          client,
-          oldToken
-        );
+    	if (timeDifference > refreshExpirationTime) {
+    		//console.log(timeDifference + " > " + refreshExpirationTime);
+    		tokenRefresh(client, oldToken);
+    	} else {
+    		//console.log(timeDifference + " < " + refreshExpirationTime);
+    		let remainingTime = refreshExpirationTime - timeDifference;
+    		clearTokenRefreshTimeout();
+    		tokenRefreshTimeout = setTimeout(
+    			tokenRefresh,
+    			// Must convert minutes to milliseconds
+    			remainingTime * 60000,
+    			client,
+    			oldToken
+    		);
 
-        if (isStartedTimeout === false) {
-          localStorage.setItem("startedTimeout", JSON.stringify(true));
-        }
+    		if (isStartedTimeout === false) {
+    			localStorage.setItem('startedTimeout', JSON.stringify(true));
+    		}
 
-        if (isSessionTimeout === false) {
-          sessionStorage.setItem("startedTimeoutSession", JSON.stringify(true));
-        }
+    		if (isSessionTimeout === false) {
+    			sessionStorage.setItem('startedTimeoutSession', JSON.stringify(true));
+    		}
 
-        console.log("Fetch token in : " + remainingTime);
-      }
+    		console.log('Fetch token in : ' + remainingTime);
+    	}
     }
 
     function clearTokenRefreshTimeout() {
-      clearTimeout(tokenRefreshTimeout);
+    	clearTimeout(tokenRefreshTimeout);
     }
 
     async function register(client, isCompany, name, email, password) {
-      await mutate(client, {
-        mutation: CREATE_USER,
-        variables: { isCompany, name, email, password }
-      }).then(() => {
-        push("/verifyaccount");
-      });
+    	await mutate(client, {
+    		mutation: CREATE_USER,
+    		variables: { isCompany, name, email, password }
+    	}).then(() => {
+    		push('/verifyaccount');
+    	});
     }
 
     async function activateAccount(client, email, code) {
-      await mutate(client, {
-        mutation: ACTIVATE_USER,
-        variables: { email, code }
-      }).then(() => {
-        push("/login");
-      });
+    	await mutate(client, {
+    		mutation: ACTIVATE_USER,
+    		variables: { email, code }
+    	}).then(() => {
+    		push('/login');
+    	});
     }
 
     async function login(client, email, password, isKeepMeLoggedIn) {
-      await mutate(client, {
-        mutation: LOGIN_USER,
-        variables: { email, password }
-      }).then(result => {
-        refreshToken.set(result.data.tokenAuth.refreshToken);
-        keepMeLoggedIn.set(isKeepMeLoggedIn);
-        lastLoggedIn.set(Date.now());
-        isLoggedIn.set(true);
-        // This must be here!!!
-        localStorage.setItem("login-event", "login" + Math.random());
-        // tokenRefreshTimeoutFunc(client);
-        // push("/dashboard/");
-      });
+    	await mutate(client, {
+    		mutation: LOGIN_USER,
+    		variables: { email, password }
+    	}).then(result => {
+    		refreshToken.set(result.data.tokenAuth.refreshToken);
+    		keepMeLoggedIn.set(isKeepMeLoggedIn);
+    		lastLoggedIn.set(Date.now());
+    		isLoggedIn.set(true);
+    		// This must be here!!!
+    		localStorage.setItem('login-event', 'login' + Math.random());
+    		// tokenRefreshTimeoutFunc(client);
+    		// push("/dashboard/");
+    	});
     }
 
     function logout() {
-      refreshToken.set("");
-      lastLoggedIn.set(0);
-      keepMeLoggedIn.set(false);
-      isLoggedIn.set(false);
-      user.set({});
-      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
-      localStorage.setItem("startedTimeout", JSON.stringify(false));
-      localStorage.setItem("logout-event", "logout" + Math.random());
+    	refreshToken.set('');
+    	lastLoggedIn.set(0);
+    	keepMeLoggedIn.set(false);
+    	isLoggedIn.set(false);
+    	user.set({});
+    	menuDisplayed.set(false);
+    	sessionStorage.setItem('startedTimeoutSession', JSON.stringify(false));
+    	localStorage.setItem('startedTimeout', JSON.stringify(false));
+    	localStorage.setItem('logout-event', 'logout' + Math.random());
     }
 
     /* src\account\SignUp.svelte generated by Svelte v3.6.7 */
@@ -11669,7 +11847,7 @@ var app = (function () {
     			t = text(t_value);
     			option.__value = option_value_value = ctx.choice;
     			option.value = option.__value;
-    			add_location(option, file$2, 140, 16, 3530);
+    			add_location(option, file$2, 140, 16, 3574);
     		},
 
     		m: function mount(target, anchor) {
@@ -11757,41 +11935,42 @@ var app = (function () {
     			t19 = text("\r\n            or\r\n            ");
     			a1 = element("a");
     			a1.textContent = "Verify your account";
-    			attr(h3, "class", "card-title svelte-d971r");
-    			add_location(h3, file$2, 130, 8, 3060);
-    			attr(h6, "class", "card-subtitle mb-2 svelte-d971r");
-    			add_location(h6, file$2, 131, 8, 3112);
-    			attr(div0, "class", "card-header rounded-top svelte-d971r");
-    			add_location(div0, file$2, 129, 6, 3013);
+    			attr(h3, "class", "card-title svelte-1ex7cpf");
+    			add_location(h3, file$2, 127, 8, 3008);
+    			attr(h6, "class", "card-subtitle mb-2 svelte-1ex7cpf");
+    			add_location(h6, file$2, 128, 8, 3060);
+    			attr(div0, "class", "card-header svelte-1ex7cpf");
+    			add_location(div0, file$2, 126, 6, 2973);
     			if (ctx.selectedUserType === void 0) add_render_callback(() => ctx.select_change_handler.call(select));
+    			attr(select, "aria-describedby", "inputGroupSelect01");
     			attr(select, "class", "custom-select");
-    			add_location(select, file$2, 138, 12, 3403);
-    			attr(div1, "class", "input-group mb-3");
-    			add_location(div1, file$2, 137, 10, 3359);
+    			add_location(select, file$2, 135, 12, 3364);
     			attr(small0, "id", "inputGroupSelect01");
-    			attr(small0, "class", "form-text text-muted note svelte-d971r");
-    			add_location(small0, file$2, 144, 10, 3651);
+    			attr(small0, "class", "form-text text-muted note");
+    			add_location(small0, file$2, 143, 12, 3679);
+    			attr(div1, "class", "form-group svelte-1ex7cpf");
+    			add_location(div1, file$2, 134, 10, 3326);
     			attr(input0, "type", "text");
     			attr(input0, "class", "form-control text");
     			attr(input0, "id", "exampleInputText1");
     			attr(input0, "placeholder", ctx.placeHolderName);
     			input0.required = true;
     			attr(input0, "maxlength", "60");
-    			add_location(input0, file$2, 149, 12, 3921);
-    			attr(div2, "class", "form-group svelte-d971r");
-    			add_location(div2, file$2, 147, 10, 3809);
+    			add_location(input0, file$2, 149, 12, 3971);
+    			attr(div2, "class", "form-group svelte-1ex7cpf");
+    			add_location(div2, file$2, 147, 10, 3859);
     			attr(input1, "type", "email");
     			attr(input1, "class", "form-control");
     			attr(input1, "id", "exampleInputEmail1");
     			attr(input1, "aria-describedby", "emailHelp");
     			attr(input1, "placeholder", "Enter a valid email address");
     			input1.required = true;
-    			add_location(input1, file$2, 160, 12, 4312);
+    			add_location(input1, file$2, 160, 12, 4362);
     			attr(small1, "id", "emailHelp");
     			attr(small1, "class", "form-text text-muted");
-    			add_location(small1, file$2, 168, 12, 4597);
-    			attr(div3, "class", "form-group svelte-d971r");
-    			add_location(div3, file$2, 158, 10, 4198);
+    			add_location(small1, file$2, 168, 12, 4647);
+    			attr(div3, "class", "form-group svelte-1ex7cpf");
+    			add_location(div3, file$2, 158, 10, 4248);
     			attr(input2, "type", "password");
     			attr(input2, "class", "form-control password");
     			attr(input2, "id", "password");
@@ -11799,9 +11978,9 @@ var app = (function () {
     			input2.required = true;
     			attr(input2, "minlength", "8");
     			attr(input2, "maxlength", "30");
-    			add_location(input2, file$2, 174, 12, 4874);
-    			attr(div4, "class", "form-group svelte-d971r");
-    			add_location(div4, file$2, 172, 10, 4762);
+    			add_location(input2, file$2, 174, 12, 4924);
+    			attr(div4, "class", "form-group svelte-1ex7cpf");
+    			add_location(div4, file$2, 172, 10, 4812);
     			attr(input3, "type", "password");
     			attr(input3, "class", "form-control password");
     			attr(input3, "id", "confirmPassword");
@@ -11809,30 +11988,31 @@ var app = (function () {
     			input3.required = true;
     			attr(input3, "minlength", "8");
     			attr(input3, "maxlength", "30");
-    			add_location(input3, file$2, 186, 12, 5288);
-    			attr(div5, "class", "form-group svelte-d971r");
-    			add_location(div5, file$2, 184, 10, 5176);
-    			attr(div6, "class", "form-group form-check svelte-d971r");
-    			add_location(div6, file$2, 196, 10, 5612);
-    			add_location(h5, file$2, 198, 12, 5721);
+    			add_location(input3, file$2, 186, 12, 5338);
+    			attr(div5, "class", "form-group svelte-1ex7cpf");
+    			add_location(div5, file$2, 184, 10, 5226);
+    			attr(div6, "class", "form-group form-check svelte-1ex7cpf");
+    			add_location(div6, file$2, 196, 10, 5662);
+    			add_location(h5, file$2, 198, 12, 5771);
     			attr(button, "type", "submit");
-    			attr(button, "class", "btn btn-primary svelte-d971r");
-    			add_location(button, file$2, 197, 10, 5661);
+    			attr(button, "class", "btn btn-primary svelte-1ex7cpf");
+    			add_location(button, file$2, 197, 10, 5711);
     			attr(a0, "href", "#/login");
-    			add_location(a0, file$2, 202, 12, 5848);
+    			add_location(a0, file$2, 202, 12, 5898);
     			attr(a1, "href", "#/verifyaccount");
-    			add_location(a1, file$2, 204, 12, 5905);
-    			attr(p, "class", "form-text text-muted svelte-d971r");
-    			add_location(p, file$2, 200, 10, 5769);
+    			add_location(a1, file$2, 204, 12, 5955);
+    			attr(p, "class", "form-text text-muted svelte-1ex7cpf");
+    			add_location(p, file$2, 200, 10, 5819);
     			fieldset.disabled = ctx.formIsDisabled;
-    			add_location(fieldset, file$2, 136, 8, 3311);
-    			add_location(form, file$2, 135, 6, 3255);
-    			attr(div7, "class", "card-body svelte-d971r");
-    			add_location(div7, file$2, 128, 4, 2982);
-    			attr(div8, "class", "card .mx-auto svelte-d971r");
-    			add_location(div8, file$2, 127, 2, 2921);
-    			attr(main, "class", "svelte-d971r");
-    			add_location(main, file$2, 126, 0, 2911);
+    			add_location(fieldset, file$2, 133, 8, 3278);
+    			attr(form, "class", "form-group svelte-1ex7cpf");
+    			add_location(form, file$2, 132, 6, 3203);
+    			attr(div7, "class", "card-body svelte-1ex7cpf");
+    			add_location(div7, file$2, 125, 4, 2942);
+    			attr(div8, "class", "card .mx-auto svelte-1ex7cpf");
+    			add_location(div8, file$2, 124, 2, 2881);
+    			attr(main, "class", "svelte-1ex7cpf");
+    			add_location(main, file$2, 123, 0, 2871);
 
     			dispose = [
     				listen(select, "change", ctx.select_change_handler),
@@ -11870,8 +12050,8 @@ var app = (function () {
 
     			select_option(select, ctx.selectedUserType);
 
-    			append(fieldset, t5);
-    			append(fieldset, small0);
+    			append(div1, t5);
+    			append(div1, small0);
     			append(fieldset, t7);
     			append(fieldset, div2);
     			append(div2, input0);
@@ -12163,11 +12343,11 @@ var app = (function () {
     			p2 = element("p");
     			a2 = element("a");
     			a2.textContent = "Verify your account?";
-    			attr(h3, "class", "card-title svelte-7d0zcw");
-    			add_location(h3, file$3, 97, 8, 2284);
-    			attr(h6, "class", "card-subtitle mb-2 svelte-7d0zcw");
-    			add_location(h6, file$3, 98, 8, 2340);
-    			attr(div0, "class", "card-header rounded-top svelte-7d0zcw");
+    			attr(h3, "class", "card-title svelte-1t2q2t9");
+    			add_location(h3, file$3, 97, 8, 2272);
+    			attr(h6, "class", "card-subtitle mb-2 svelte-1t2q2t9");
+    			add_location(h6, file$3, 98, 8, 2328);
+    			attr(div0, "class", "card-header svelte-1t2q2t9");
     			add_location(div0, file$3, 96, 6, 2237);
     			attr(input0, "type", "email");
     			attr(input0, "class", "form-control");
@@ -12175,12 +12355,12 @@ var app = (function () {
     			attr(input0, "aria-describedby", "emailHelp");
     			attr(input0, "placeholder", "Enter email");
     			input0.required = true;
-    			add_location(input0, file$3, 106, 12, 2700);
+    			add_location(input0, file$3, 106, 12, 2688);
     			attr(small, "id", "emailHelp");
     			attr(small, "class", "form-text text-muted");
-    			add_location(small, file$3, 114, 12, 2969);
-    			attr(div1, "class", div1_class_value = "form-group " + ctx.formIsDisabled + " svelte-7d0zcw");
-    			add_location(div1, file$3, 104, 10, 2569);
+    			add_location(small, file$3, 114, 12, 2957);
+    			attr(div1, "class", div1_class_value = "form-group " + ctx.formIsDisabled + " svelte-1t2q2t9");
+    			add_location(div1, file$3, 104, 10, 2557);
     			attr(input1, "type", "password");
     			attr(input1, "class", "form-control password");
     			attr(input1, "id", "exampleInputPassword1");
@@ -12188,42 +12368,42 @@ var app = (function () {
     			input1.required = true;
     			attr(input1, "minlength", "8");
     			attr(input1, "maxlength", "30");
-    			add_location(input1, file$3, 120, 12, 3246);
-    			attr(div2, "class", "form-group svelte-7d0zcw");
-    			add_location(div2, file$3, 118, 10, 3134);
+    			add_location(input1, file$3, 120, 12, 3234);
+    			attr(div2, "class", "form-group svelte-1t2q2t9");
+    			add_location(div2, file$3, 118, 10, 3122);
     			attr(input2, "type", "checkbox");
     			attr(input2, "class", "form-check-input");
     			attr(input2, "id", "exampleCheck1");
-    			add_location(input2, file$3, 131, 12, 3610);
+    			add_location(input2, file$3, 131, 12, 3598);
     			attr(label, "class", "form-check-label");
     			attr(label, "for", "exampleCheck1");
-    			add_location(label, file$3, 136, 12, 3785);
-    			attr(div3, "class", "form-group form-check svelte-7d0zcw");
-    			add_location(div3, file$3, 130, 10, 3561);
-    			add_location(h5, file$3, 141, 12, 3982);
+    			add_location(label, file$3, 136, 12, 3773);
+    			attr(div3, "class", "form-group form-check svelte-1t2q2t9");
+    			add_location(div3, file$3, 130, 10, 3549);
+    			add_location(h5, file$3, 141, 12, 3970);
     			attr(button, "type", "submit");
-    			attr(button, "class", "btn btn-primary svelte-7d0zcw");
-    			add_location(button, file$3, 140, 10, 3922);
+    			attr(button, "class", "btn btn-primary svelte-1t2q2t9");
+    			add_location(button, file$3, 140, 10, 3910);
     			attr(a0, "href", "#/signup");
-    			add_location(a0, file$3, 145, 12, 4107);
-    			attr(p0, "class", "form-text text-muted ca svelte-7d0zcw");
-    			add_location(p0, file$3, 143, 10, 4029);
+    			add_location(a0, file$3, 145, 12, 4095);
+    			attr(p0, "class", "form-text text-muted ca svelte-1t2q2t9");
+    			add_location(p0, file$3, 143, 10, 4017);
     			attr(a1, "href", "#/recoveraccount");
-    			add_location(a1, file$3, 148, 12, 4224);
-    			attr(p1, "class", "form-text text-muted fp svelte-7d0zcw");
-    			add_location(p1, file$3, 147, 10, 4175);
+    			add_location(a1, file$3, 148, 12, 4212);
+    			attr(p1, "class", "form-text text-muted fp svelte-1t2q2t9");
+    			add_location(p1, file$3, 147, 10, 4163);
     			attr(a2, "href", "#/verifyaccount");
-    			add_location(a2, file$3, 151, 12, 4349);
-    			attr(p2, "class", "form-text text-muted ca svelte-7d0zcw");
-    			add_location(p2, file$3, 150, 10, 4300);
+    			add_location(a2, file$3, 151, 12, 4337);
+    			attr(p2, "class", "form-text text-muted ca svelte-1t2q2t9");
+    			add_location(p2, file$3, 150, 10, 4288);
     			fieldset.disabled = ctx.formIsDisabled;
-    			add_location(fieldset, file$3, 103, 8, 2521);
-    			add_location(form, file$3, 102, 6, 2465);
-    			attr(div4, "class", "card-body svelte-7d0zcw");
+    			add_location(fieldset, file$3, 103, 8, 2509);
+    			add_location(form, file$3, 102, 6, 2453);
+    			attr(div4, "class", "card-body svelte-1t2q2t9");
     			add_location(div4, file$3, 95, 4, 2206);
-    			attr(div5, "class", "card svelte-7d0zcw");
+    			attr(div5, "class", "card svelte-1t2q2t9");
     			add_location(div5, file$3, 94, 2, 2154);
-    			attr(main, "class", "svelte-7d0zcw");
+    			attr(main, "class", "svelte-1t2q2t9");
     			add_location(main, file$3, 93, 0, 2144);
 
     			dispose = [
@@ -12291,7 +12471,7 @@ var app = (function () {
     		p: function update(changed, ctx) {
     			if (changed.email && (input0.value !== ctx.email)) input0.value = ctx.email;
 
-    			if ((!current || changed.formIsDisabled) && div1_class_value !== (div1_class_value = "form-group " + ctx.formIsDisabled + " svelte-7d0zcw")) {
+    			if ((!current || changed.formIsDisabled) && div1_class_value !== (div1_class_value = "form-group " + ctx.formIsDisabled + " svelte-1t2q2t9")) {
     				attr(div1, "class", div1_class_value);
     			}
 
@@ -12519,7 +12699,7 @@ var app = (function () {
     const file$6 = "src\\account\\VerifyAccount.svelte";
 
     function create_fragment$9(ctx) {
-    	var t0, main, div4, div3, div0, h3, t2, h6, t4, form, fieldset, div1, input0, t5, input1, t6, div2, t7, button, h5, div4_intro, current, dispose;
+    	var t0, main, div4, div3, div0, h3, t2, h6, t4, form, fieldset, div1, input0, t5, div2, input1, t6, button, h5, div4_intro, current, dispose;
 
     	var authroute = new AuthRoute({ $$inline: true });
 
@@ -12542,42 +12722,41 @@ var app = (function () {
     			div1 = element("div");
     			input0 = element("input");
     			t5 = space();
+    			div2 = element("div");
     			input1 = element("input");
     			t6 = space();
-    			div2 = element("div");
-    			t7 = space();
     			button = element("button");
     			h5 = element("h5");
     			h5.textContent = "Confirm Account";
     			attr(h3, "class", "card-title svelte-92piy6");
-    			add_location(h3, file$6, 81, 8, 1824);
+    			add_location(h3, file$6, 81, 8, 1812);
     			attr(h6, "class", "card-subtitle mb-2 svelte-92piy6");
-    			add_location(h6, file$6, 82, 8, 1876);
-    			attr(div0, "class", "card-header rounded-top svelte-92piy6");
+    			add_location(h6, file$6, 82, 8, 1864);
+    			attr(div0, "class", "card-header svelte-92piy6");
     			add_location(div0, file$6, 80, 6, 1777);
     			attr(input0, "type", "email");
     			attr(input0, "class", "form-control");
     			attr(input0, "id", "exampleInputEmail1");
     			attr(input0, "aria-describedby", "emailHelp");
     			attr(input0, "placeholder", "Enter email");
-    			add_location(input0, file$6, 90, 12, 2238);
+    			add_location(input0, file$6, 90, 12, 2226);
+    			attr(div1, "class", "form-group svelte-92piy6");
+    			add_location(div1, file$6, 88, 10, 2112);
     			attr(input1, "type", "text");
     			attr(input1, "class", "form-control");
     			attr(input1, "id", "exampleInputText1");
     			attr(input1, "aria-describedby", "textHelp");
     			attr(input1, "placeholder", "Enter code");
-    			add_location(input1, file$6, 97, 12, 2483);
-    			attr(div1, "class", "form-group svelte-92piy6");
-    			add_location(div1, file$6, 88, 10, 2124);
-    			attr(div2, "class", "form-group form-check svelte-92piy6");
-    			add_location(div2, file$6, 106, 10, 2741);
-    			add_location(h5, file$6, 108, 12, 2850);
+    			add_location(input1, file$6, 99, 12, 2525);
+    			attr(div2, "class", "form-group svelte-92piy6");
+    			add_location(div2, file$6, 98, 10, 2487);
+    			add_location(h5, file$6, 109, 12, 2843);
     			attr(button, "type", "submit");
     			attr(button, "class", "btn btn-primary svelte-92piy6");
-    			add_location(button, file$6, 107, 10, 2790);
+    			add_location(button, file$6, 108, 10, 2783);
     			fieldset.disabled = ctx.formIsDisabled;
-    			add_location(fieldset, file$6, 87, 8, 2076);
-    			add_location(form, file$6, 86, 6, 2020);
+    			add_location(fieldset, file$6, 87, 8, 2064);
+    			add_location(form, file$6, 86, 6, 2008);
     			attr(div3, "class", "card-body svelte-92piy6");
     			add_location(div3, file$6, 79, 4, 1746);
     			attr(div4, "class", "card svelte-92piy6");
@@ -12614,14 +12793,13 @@ var app = (function () {
 
     			input0.value = ctx.email;
 
-    			append(div1, t5);
-    			append(div1, input1);
+    			append(fieldset, t5);
+    			append(fieldset, div2);
+    			append(div2, input1);
 
     			input1.value = ctx.code;
 
     			append(fieldset, t6);
-    			append(fieldset, div2);
-    			append(fieldset, t7);
     			append(fieldset, button);
     			append(button, h5);
     			current = true;
@@ -12874,12 +13052,197 @@ var app = (function () {
     	}
     }
 
+    /**
+     * generic function to inject data into token-laden string
+     * @param str {String} Required
+     * @param name {String} Required
+     * @param value {String|Integer} Required
+     * @returns {String}
+     *
+     * @example
+     * injectStringData("The following is a token: #{tokenName}", "tokenName", 123); 
+     * @returns {String} "The following is a token: 123"
+     *
+     */
+    const injectStringData = (str,name,value) => str
+      .replace(new RegExp('#{'+name+'}','g'), value);
+
+    /**
+     * Generic function to enforce length of string. 
+     * 
+     * Pass a string or number to this function and specify the desired length.
+     * This function will either pad the # with leading 0's (if str.length < length)
+     * or remove data from the end (@fromBack==false) or beginning (@fromBack==true)
+     * of the string when str.length > length.
+     *
+     * When length == str.length or typeof length == 'undefined', this function
+     * returns the original @str parameter.
+     * 
+     * @param str {String} Required
+     * @param length {Integer} Required
+     * @param fromBack {Boolean} Optional
+     * @returns {String}
+     *
+     */
+    const enforceLength = function(str,length,fromBack) {
+      str = str.toString();
+      if(typeof length == 'undefined') return str;
+      if(str.length == length) return str;
+      fromBack = (typeof fromBack == 'undefined') ? false : fromBack;
+      if(str.length < length) {
+        // pad the beginning of the string w/ enough 0's to reach desired length:
+        while(length - str.length > 0) str = '0' + str;
+      } else if(str.length > length) {
+        if(fromBack) {
+          // grab the desired #/chars from end of string: ex: '2015' -> '15'
+          str = str.substring(str.length-length);
+        } else {
+          // grab the desired #/chars from beginning of string: ex: '2015' -> '20'
+          str = str.substring(0,length);
+        }
+      }
+      return str;
+    };
+
+    const daysOfWeek = [ 
+      'Sunday', 
+      'Monday', 
+      'Tuesday', 
+      'Wednesday', 
+      'Thursday', 
+      'Friday', 
+      'Saturday' 
+    ];
+
+    const monthsOfYear = [ 
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+
+    let dictionary = { 
+      daysOfWeek, 
+      monthsOfYear
+    };
+
+    var acceptedDateTokens = [
+      { 
+        // d: day of the month, 2 digits with leading zeros:
+        key: 'd', 
+        method: function(date) { return enforceLength(date.getDate(), 2); } 
+      }, { 
+        // D: textual representation of day, 3 letters: Sun thru Sat
+        key: 'D', 
+        method: function(date) { return enforceLength(dictionary.daysOfWeek[date.getDay()],3); } 
+      }, { 
+        // j: day of month without leading 0's
+        key: 'j', 
+        method: function(date) { return date.getDate(); } 
+      }, { 
+        // l: full textual representation of day of week: Sunday thru Saturday
+        key: 'l', 
+        method: function(date) { return dictionary.daysOfWeek[date.getDay()]; } 
+      }, { 
+        // F: full text month: 'January' thru 'December'
+        key: 'F', 
+        method: function(date) { return dictionary.monthsOfYear[date.getMonth()]; } 
+      }, { 
+        // m: 2 digit numeric month: '01' - '12':
+        key: 'm', 
+        method: function(date) { return enforceLength(date.getMonth()+1,2); } 
+      }, { 
+        // M: a short textual representation of the month, 3 letters: 'Jan' - 'Dec'
+        key: 'M', 
+        method: function(date) { return enforceLength(dictionary.monthsOfYear[date.getMonth()],3); } 
+      }, { 
+        // n: numeric represetation of month w/o leading 0's, '1' - '12':
+        key: 'n', 
+        method: function(date) { return date.getMonth() + 1; } 
+      }, { 
+        // Y: Full numeric year, 4 digits
+        key: 'Y', 
+        method: function(date) { return date.getFullYear(); } 
+      }, { 
+        // y: 2 digit numeric year:
+        key: 'y', 
+        method: function(date) { return enforceLength(date.getFullYear(),2,true); }
+       }
+    ];
+
+    var acceptedTimeTokens = [
+      { 
+        // a: lowercase ante meridiem and post meridiem 'am' or 'pm'
+        key: 'a', 
+        method: function(date) { return (date.getHours() > 11) ? 'pm' : 'am'; } 
+      }, { 
+        // A: uppercase ante merdiiem and post meridiem 'AM' or 'PM'
+        key: 'A', 
+        method: function(date) { return (date.getHours() > 11) ? 'PM' : 'AM'; } 
+      }, { 
+        // g: 12-hour format of an hour without leading zeros 1-12
+        key: 'g', 
+        method: function(date) { return date.getHours() % 12 || 12; } 
+      }, { 
+        // G: 24-hour format of an hour without leading zeros 0-23
+        key: 'G', 
+        method: function(date) { return date.getHours(); } 
+      }, { 
+        // h: 12-hour format of an hour with leading zeros 01-12
+        key: 'h', 
+        method: function(date) { return enforceLength(date.getHours()%12 || 12,2); } 
+      }, { 
+        // H: 24-hour format of an hour with leading zeros: 00-23
+        key: 'H', 
+        method: function(date) { return enforceLength(date.getHours(),2); } 
+      }, { 
+        // i: Minutes with leading zeros 00-59
+        key: 'i', 
+        method: function(date) { return enforceLength(date.getMinutes(),2); } 
+      }, { 
+        // s: Seconds with leading zeros 00-59
+        key: 's', 
+        method: function(date) { return enforceLength(date.getSeconds(),2); }
+       }
+    ];
+
+    /**
+     * generic formatDate function which accepts dynamic templates
+     * @param date {Date} Required
+     * @param template {String} Optional
+     * @returns {String}
+     *
+     * @example
+     * formatDate(new Date(), '#{M}. #{j}, #{Y}')
+     * @returns {Number} Returns a formatted date
+     *
+     */
+    const formatDate = (date,template='#{m}/#{d}/#{Y}') => {
+      acceptedDateTokens.forEach(token => {
+        if(template.indexOf(`#{${token.key}}`) == -1) return; 
+        template = injectStringData(template,token.key,token.method(date));
+      }); 
+      acceptedTimeTokens.forEach(token => {
+        if(template.indexOf(`#{${token.key}}`) == -1) return;
+        template = injectStringData(template,token.key,token.method(date));
+      });
+      return template;
+    };
+
     /* src\dashboard\Invitation.svelte generated by Svelte v3.6.7 */
     const { console: console_1 } = globals;
 
     const file$8 = "src\\dashboard\\Invitation.svelte";
 
-    // (55:6) {:else}
+    // (59:6) {:else}
     function create_else_block(ctx) {
     	var button, dispose;
 
@@ -12888,7 +13251,7 @@ var app = (function () {
     			button = element("button");
     			button.textContent = "Accept";
     			attr(button, "class", "btn btn-primary");
-    			add_location(button, file$8, 55, 8, 1709);
+    			add_location(button, file$8, 59, 8, 1852);
     			dispose = listen(button, "click", ctx.confirmInvitation);
     		},
 
@@ -12906,7 +13269,7 @@ var app = (function () {
     	};
     }
 
-    // (53:6) {#if invitation.isConfirmed}
+    // (57:6) {#if invitation.isConfirmed}
     function create_if_block(ctx) {
     	var h5;
 
@@ -12914,7 +13277,7 @@ var app = (function () {
     		c: function create() {
     			h5 = element("h5");
     			h5.textContent = "You have already accepted this invitation!";
-    			add_location(h5, file$8, 53, 8, 1633);
+    			add_location(h5, file$8, 57, 8, 1776);
     		},
 
     		m: function mount(target, anchor) {
@@ -12930,7 +13293,7 @@ var app = (function () {
     }
 
     function create_fragment$b(ctx) {
-    	var main, div2, div0, t0, t1_value = ctx.invitation.created, t1, t2, div1, h5, t3, t4_value = ctx.invitation.company.userprofile.companyName, t4, t5, p, t7, main_intro;
+    	var main, div2, div0, t0, t1_value = formatDate(new Date(ctx.invitation.created), dateFormat), t1, t2, div1, h5, t3, t4_value = ctx.invitation.company.userprofile.companyName, t4, t5, p, t7, main_intro;
 
     	function select_block_type(ctx) {
     		if (ctx.invitation.isConfirmed) return create_if_block;
@@ -12945,12 +13308,12 @@ var app = (function () {
     			main = element("main");
     			div2 = element("div");
     			div0 = element("div");
-    			t0 = text("Invitation on ");
+    			t0 = text("Invitation sent on ");
     			t1 = text(t1_value);
     			t2 = space();
     			div1 = element("div");
     			h5 = element("h5");
-    			t3 = text("Invitation from ");
+    			t3 = text("From ");
     			t4 = text(t4_value);
     			t5 = space();
     			p = element("p");
@@ -12958,17 +13321,17 @@ var app = (function () {
     			t7 = space();
     			if_block.c();
     			attr(div0, "class", "card-header");
-    			add_location(div0, file$8, 44, 4, 1258);
+    			add_location(div0, file$8, 46, 4, 1359);
     			attr(h5, "class", "card-title");
-    			add_location(h5, file$8, 46, 6, 1360);
+    			add_location(h5, file$8, 50, 6, 1514);
     			attr(p, "class", "card-text");
-    			add_location(p, file$8, 49, 6, 1474);
+    			add_location(p, file$8, 53, 6, 1617);
     			attr(div1, "class", "card-body");
-    			add_location(div1, file$8, 45, 4, 1329);
+    			add_location(div1, file$8, 49, 4, 1483);
     			attr(div2, "class", "card");
-    			add_location(div2, file$8, 43, 2, 1234);
+    			add_location(div2, file$8, 45, 2, 1335);
     			attr(main, "class", "svelte-cgz76s");
-    			add_location(main, file$8, 42, 0, 1194);
+    			add_location(main, file$8, 44, 0, 1295);
     		},
 
     		l: function claim(nodes) {
@@ -12993,7 +13356,7 @@ var app = (function () {
     		},
 
     		p: function update(changed, ctx) {
-    			if ((changed.invitation) && t1_value !== (t1_value = ctx.invitation.created)) {
+    			if ((changed.invitation) && t1_value !== (t1_value = formatDate(new Date(ctx.invitation.created), dateFormat))) {
     				set_data(t1, t1_value);
     			}
 
@@ -13031,6 +13394,8 @@ var app = (function () {
     		}
     	};
     }
+
+    let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
 
     function instance$8($$self, $$props, $$invalidate) {
     	let $invitations;
@@ -13109,17 +13474,17 @@ var app = (function () {
 
     // (43:4) {:else}
     function create_else_block$1(ctx) {
-    	var h6;
+    	var h5;
 
     	return {
     		c: function create() {
-    			h6 = element("h6");
-    			h6.textContent = "No new Invitation(s), please request an invite from your company's\r\n        admin!";
-    			add_location(h6, file$9, 43, 6, 952);
+    			h5 = element("h5");
+    			h5.textContent = "No new Invitation(s), please request an invite from your company's\r\n        admin!";
+    			add_location(h5, file$9, 43, 6, 952);
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, h6, anchor);
+    			insert(target, h5, anchor);
     		},
 
     		p: noop,
@@ -13128,7 +13493,7 @@ var app = (function () {
 
     		d: function destroy(detaching) {
     			if (detaching) {
-    				detach(h6);
+    				detach(h5);
     			}
     		}
     	};
@@ -13390,8 +13755,161 @@ var app = (function () {
     	return child_ctx;
     }
 
-    // (71:8) {#each $connections as choice}
-    function create_each_block$3(ctx) {
+    function get_each_context_1(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.shift = list[i];
+    	child_ctx.i = i;
+    	return child_ctx;
+    }
+
+    function get_each_context_2(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    // (256:2) {:else}
+    function create_else_block_2(ctx) {
+    	var div, h5;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			h5 = element("h5");
+    			h5.textContent = "You are not a member of any company yet, please request an invite from\r\n        your company's admin to start swapping shifts with your colleagues.";
+    			add_location(h5, file$a, 257, 6, 6481);
+    			add_location(div, file$a, 256, 4, 6468);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, h5);
+    		},
+
+    		p: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+    		}
+    	};
+    }
+
+    // (236:2) {#if $connections.length > 0}
+    function create_if_block_5(ctx) {
+    	var div0, div0_class_value, t, div2, div1, select, option, div2_class_value, dispose;
+
+    	var each_value_2 = ctx.$connections;
+
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value_2.length; i += 1) {
+    		each_blocks[i] = create_each_block_2(get_each_context_2(ctx, each_value_2, i));
+    	}
+
+    	return {
+    		c: function create() {
+    			div0 = element("div");
+    			t = space();
+    			div2 = element("div");
+    			div1 = element("div");
+    			select = element("select");
+    			option = element("option");
+    			option.textContent = "Select Company";
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+    			attr(div0, "id", "empty-container");
+    			attr(div0, "class", div0_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " fixed-top" + " svelte-f4t0hs");
+    			add_location(div0, file$a, 236, 4, 5776);
+    			option.__value = "";
+    			option.value = option.__value;
+    			option.selected = true;
+    			option.disabled = true;
+    			option.hidden = true;
+    			add_location(option, file$a, 246, 10, 6164);
+    			if (ctx.selectedCompany === void 0) add_render_callback(() => ctx.select_change_handler.call(select));
+    			attr(select, "id", "company-selector");
+    			attr(select, "class", "custom-select");
+    			add_location(select, file$a, 241, 8, 6003);
+    			attr(div1, "class", "input-group mb-3");
+    			add_location(div1, file$a, 240, 6, 5963);
+    			attr(div2, "id", "form");
+    			attr(div2, "class", div2_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " fixed-top" + " svelte-f4t0hs");
+    			add_location(div2, file$a, 239, 4, 5882);
+
+    			dispose = [
+    				listen(select, "change", ctx.select_change_handler),
+    				listen(select, "change", ctx.fetchShifts)
+    			];
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div0, anchor);
+    			insert(target, t, anchor);
+    			insert(target, div2, anchor);
+    			append(div2, div1);
+    			append(div1, select);
+    			append(select, option);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(select, null);
+    			}
+
+    			select_option(select, ctx.selectedCompany);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.$menuDisplayed) && div0_class_value !== (div0_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " fixed-top" + " svelte-f4t0hs")) {
+    				attr(div0, "class", div0_class_value);
+    			}
+
+    			if (changed.$connections) {
+    				each_value_2 = ctx.$connections;
+
+    				for (var i = 0; i < each_value_2.length; i += 1) {
+    					const child_ctx = get_each_context_2(ctx, each_value_2, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    					} else {
+    						each_blocks[i] = create_each_block_2(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(select, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+    				each_blocks.length = each_value_2.length;
+    			}
+
+    			if (changed.selectedCompany) select_option(select, ctx.selectedCompany);
+
+    			if ((changed.$menuDisplayed) && div2_class_value !== (div2_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " fixed-top" + " svelte-f4t0hs")) {
+    				attr(div2, "class", div2_class_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div0);
+    				detach(t);
+    				detach(div2);
+    			}
+
+    			destroy_each(each_blocks, detaching);
+
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    // (248:10) {#each $connections as choice}
+    function create_each_block_2(ctx) {
     	var option, t0_value = ctx.choice.company.userprofile.companyName, t0, t1, option_value_value;
 
     	return {
@@ -13401,7 +13919,7 @@ var app = (function () {
     			t1 = space();
     			option.__value = option_value_value = ctx.choice;
     			option.value = option.__value;
-    			add_location(option, file$a, 71, 10, 1656);
+    			add_location(option, file$a, 248, 12, 6285);
     		},
 
     		m: function mount(target, anchor) {
@@ -13430,10 +13948,320 @@ var app = (function () {
     	};
     }
 
-    function create_fragment$d(ctx) {
-    	var main, div1, div0, select, option, t_1, div3, div2, main_intro, dispose;
+    // (265:4) {#if shifts.length > 0}
+    function create_if_block_4(ctx) {
+    	var each_blocks = [], each_1_lookup = new Map(), each_1_anchor;
 
-    	var each_value = ctx.$connections;
+    	var each_value_1 = ctx.shifts;
+
+    	const get_key = ctx => ctx.shift.id;
+
+    	for (var i = 0; i < each_value_1.length; i += 1) {
+    		let child_ctx = get_each_context_1(ctx, each_value_1, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block_1(key, child_ctx));
+    	}
+
+    	return {
+    		c: function create() {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].c();
+
+    			each_1_anchor = empty();
+    		},
+
+    		m: function mount(target, anchor) {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].m(target, anchor);
+
+    			insert(target, each_1_anchor, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			const each_value_1 = ctx.shifts;
+    			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value_1, each_1_lookup, each_1_anchor.parentNode, destroy_block, create_each_block_1, each_1_anchor, get_each_context_1);
+    		},
+
+    		d: function destroy(detaching) {
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].d(detaching);
+
+    			if (detaching) {
+    				detach(each_1_anchor);
+    			}
+    		}
+    	};
+    }
+
+    // (266:6) {#each shifts as shift, i (shift.id)}
+    function create_each_block_1(key_1, ctx) {
+    	var ul, li0, t0_value = formatDate(new Date(ctx.shift.fromTime), dateFormat$1), t0, t1, li1, t2_value = formatDate(new Date(ctx.shift.toTime), dateFormat$1), t2, t3, li2, t4_value = ctx.shift.postedBy.userprofile.firstName + ' ' + ctx.shift.postedBy.userprofile.lastName, t4, t5, li3, t6_value = ctx.shift.postedTo.userprofile.companyName, t6, t7, i = ctx.i, dispose;
+
+    	const assign_ul = () => ctx.ul_binding(ul, i);
+    	const unassign_ul = () => ctx.ul_binding(null, i);
+
+    	function click_handler() {
+    		return ctx.click_handler(ctx);
+    	}
+
+    	return {
+    		key: key_1,
+
+    		first: null,
+
+    		c: function create() {
+    			ul = element("ul");
+    			li0 = element("li");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			li1 = element("li");
+    			t2 = text(t2_value);
+    			t3 = space();
+    			li2 = element("li");
+    			t4 = text(t4_value);
+    			t5 = space();
+    			li3 = element("li");
+    			t6 = text(t6_value);
+    			t7 = space();
+    			attr(li0, "class", "list-group-item flex-fill");
+    			add_location(li0, file$a, 274, 10, 7073);
+    			attr(li1, "class", "list-group-item flex-fill");
+    			add_location(li1, file$a, 277, 10, 7204);
+    			attr(li2, "class", "list-group-item flex-fill");
+    			add_location(li2, file$a, 280, 10, 7333);
+    			attr(li3, "class", "list-group-item flex-fill");
+    			add_location(li3, file$a, 283, 10, 7496);
+    			attr(ul, "id", "inner-list-group");
+    			attr(ul, "class", "list-group list-group-action list-group-horizontal\r\n          list-group-flush svelte-f4t0hs");
+    			add_location(ul, file$a, 266, 8, 6805);
+    			dispose = listen(ul, "click", click_handler);
+    			this.first = ul;
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, ul, anchor);
+    			append(ul, li0);
+    			append(li0, t0);
+    			append(ul, t1);
+    			append(ul, li1);
+    			append(li1, t2);
+    			append(ul, t3);
+    			append(ul, li2);
+    			append(li2, t4);
+    			append(ul, t5);
+    			append(ul, li3);
+    			append(li3, t6);
+    			append(ul, t7);
+    			assign_ul();
+    		},
+
+    		p: function update(changed, new_ctx) {
+    			ctx = new_ctx;
+    			if ((changed.shifts) && t0_value !== (t0_value = formatDate(new Date(ctx.shift.fromTime), dateFormat$1))) {
+    				set_data(t0, t0_value);
+    			}
+
+    			if ((changed.shifts) && t2_value !== (t2_value = formatDate(new Date(ctx.shift.toTime), dateFormat$1))) {
+    				set_data(t2, t2_value);
+    			}
+
+    			if ((changed.shifts) && t4_value !== (t4_value = ctx.shift.postedBy.userprofile.firstName + ' ' + ctx.shift.postedBy.userprofile.lastName)) {
+    				set_data(t4, t4_value);
+    			}
+
+    			if ((changed.shifts) && t6_value !== (t6_value = ctx.shift.postedTo.userprofile.companyName)) {
+    				set_data(t6, t6_value);
+    			}
+
+    			if (i !== ctx.i) {
+    				unassign_ul();
+    				i = ctx.i;
+    				assign_ul();
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(ul);
+    			}
+
+    			unassign_ul();
+    			dispose();
+    		}
+    	};
+    }
+
+    // (295:8) {#if clickedShift}
+    function create_if_block$2(ctx) {
+    	var if_block_anchor;
+
+    	function select_block_type_1(ctx) {
+    		if (ctx.$user.id !== ctx.clickedShift.postedBy.id) return create_if_block_1;
+    		return create_else_block_1;
+    	}
+
+    	var current_block_type = select_block_type_1(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			if_block.c();
+    			if_block_anchor = empty();
+    		},
+
+    		m: function mount(target, anchor) {
+    			if_block.m(target, anchor);
+    			insert(target, if_block_anchor, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_1(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if_block.d(detaching);
+
+    			if (detaching) {
+    				detach(if_block_anchor);
+    			}
+    		}
+    	};
+    }
+
+    // (332:10) {:else}
+    function create_else_block_1(ctx) {
+    	var p;
+
+    	return {
+    		c: function create() {
+    			p = element("p");
+    			p.textContent = "This is your shift!!!";
+    			attr(p, "class", "svelte-f4t0hs");
+    			add_location(p, file$a, 332, 12, 9303);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, p, anchor);
+    		},
+
+    		p: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(p);
+    			}
+    		}
+    	};
+    }
+
+    // (296:10) {#if $user.id !== clickedShift.postedBy.id}
+    function create_if_block_1(ctx) {
+    	var t, if_block1_anchor;
+
+    	function select_block_type_2(ctx) {
+    		if (ctx.myShifts.length > 0) return create_if_block_3;
+    		return create_else_block$2;
+    	}
+
+    	var current_block_type = select_block_type_2(ctx);
+    	var if_block0 = current_block_type(ctx);
+
+    	var if_block1 = (ctx.selectedShift) && create_if_block_2(ctx);
+
+    	return {
+    		c: function create() {
+    			if_block0.c();
+    			t = space();
+    			if (if_block1) if_block1.c();
+    			if_block1_anchor = empty();
+    		},
+
+    		m: function mount(target, anchor) {
+    			if_block0.m(target, anchor);
+    			insert(target, t, anchor);
+    			if (if_block1) if_block1.m(target, anchor);
+    			insert(target, if_block1_anchor, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_2(ctx)) && if_block0) {
+    				if_block0.p(changed, ctx);
+    			} else {
+    				if_block0.d(1);
+    				if_block0 = current_block_type(ctx);
+    				if (if_block0) {
+    					if_block0.c();
+    					if_block0.m(t.parentNode, t);
+    				}
+    			}
+
+    			if (ctx.selectedShift) {
+    				if (if_block1) {
+    					if_block1.p(changed, ctx);
+    				} else {
+    					if_block1 = create_if_block_2(ctx);
+    					if_block1.c();
+    					if_block1.m(if_block1_anchor.parentNode, if_block1_anchor);
+    				}
+    			} else if (if_block1) {
+    				if_block1.d(1);
+    				if_block1 = null;
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if_block0.d(detaching);
+
+    			if (detaching) {
+    				detach(t);
+    			}
+
+    			if (if_block1) if_block1.d(detaching);
+
+    			if (detaching) {
+    				detach(if_block1_anchor);
+    			}
+    		}
+    	};
+    }
+
+    // (315:12) {:else}
+    function create_else_block$2(ctx) {
+    	var p;
+
+    	return {
+    		c: function create() {
+    			p = element("p");
+    			p.textContent = "You do not have any shift to propose, post shift to start\r\n                swapping.";
+    			attr(p, "class", "svelte-f4t0hs");
+    			add_location(p, file$a, 315, 14, 8697);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, p, anchor);
+    		},
+
+    		p: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(p);
+    			}
+    		}
+    	};
+    }
+
+    // (297:12) {#if myShifts.length > 0}
+    function create_if_block_3(ctx) {
+    	var div, select, option, dispose;
+
+    	var each_value = ctx.myShifts;
 
     	var each_blocks = [];
 
@@ -13443,68 +14271,44 @@ var app = (function () {
 
     	return {
     		c: function create() {
-    			main = element("main");
-    			div1 = element("div");
-    			div0 = element("div");
+    			div = element("div");
     			select = element("select");
     			option = element("option");
-    			option.textContent = "Select Company";
+    			option.textContent = "Select shift to propose\r\n                  ";
 
     			for (var i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].c();
     			}
-
-    			t_1 = space();
-    			div3 = element("div");
-    			div2 = element("div");
     			option.__value = "";
     			option.value = option.__value;
-    			add_location(option, file$a, 69, 8, 1564);
-    			if (ctx.selectedCompany === void 0) add_render_callback(() => ctx.select_change_handler.call(select));
+    			option.selected = true;
+    			option.disabled = true;
+    			option.hidden = true;
+    			add_location(option, file$a, 302, 18, 8141);
+    			if (ctx.selectedShift === void 0) add_render_callback(() => ctx.select_change_handler_1.call(select));
+    			attr(select, "id", "myShift-selector");
     			attr(select, "class", "custom-select");
-    			add_location(select, file$a, 65, 6, 1444);
-    			attr(div0, "class", "input-group mb-3");
-    			add_location(div0, file$a, 64, 4, 1406);
-    			attr(div1, "class", "form  svelte-1n9b5lp");
-    			add_location(div1, file$a, 63, 2, 1381);
-    			attr(div2, "class", "card");
-    			add_location(div2, file$a, 79, 4, 1841);
-    			attr(div3, "class", "content");
-    			add_location(div3, file$a, 78, 2, 1814);
-    			attr(main, "class", "svelte-1n9b5lp");
-    			add_location(main, file$a, 62, 0, 1343);
-
-    			dispose = [
-    				listen(select, "change", ctx.select_change_handler),
-    				listen(select, "change", ctx.fetchShifts)
-    			];
-    		},
-
-    		l: function claim(nodes) {
-    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    			add_location(select, file$a, 298, 16, 7985);
+    			attr(div, "class", "input-group mb-3");
+    			add_location(div, file$a, 297, 14, 7937);
+    			dispose = listen(select, "change", ctx.select_change_handler_1);
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, main, anchor);
-    			append(main, div1);
-    			append(div1, div0);
-    			append(div0, select);
+    			insert(target, div, anchor);
+    			append(div, select);
     			append(select, option);
 
     			for (var i = 0; i < each_blocks.length; i += 1) {
     				each_blocks[i].m(select, null);
     			}
 
-    			select_option(select, ctx.selectedCompany);
-
-    			append(main, t_1);
-    			append(main, div3);
-    			append(div3, div2);
+    			select_option(select, ctx.selectedShift);
     		},
 
     		p: function update(changed, ctx) {
-    			if (changed.$connections) {
-    				each_value = ctx.$connections;
+    			if (changed.myShifts || changed.formatDate || changed.dateFormat) {
+    				each_value = ctx.myShifts;
 
     				for (var i = 0; i < each_value.length; i += 1) {
     					const child_ctx = get_each_context$3(ctx, each_value, i);
@@ -13524,7 +14328,222 @@ var app = (function () {
     				each_blocks.length = each_value.length;
     			}
 
-    			if (changed.selectedCompany) select_option(select, ctx.selectedCompany);
+    			if (changed.selectedShift) select_option(select, ctx.selectedShift);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			destroy_each(each_blocks, detaching);
+
+    			dispose();
+    		}
+    	};
+    }
+
+    // (306:18) {#each myShifts as choice}
+    function create_each_block$3(ctx) {
+    	var option, p, t0_value = 'Starts ' + formatDate(new Date(ctx.choice.fromTime), dateFormat$1) + ' Ends ' + formatDate(new Date(ctx.choice.toTime), dateFormat$1), t0, t1, option_value_value;
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			p = element("p");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			attr(p, "class", "svelte-f4t0hs");
+    			add_location(p, file$a, 307, 22, 8372);
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$a, 306, 20, 8325);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			append(option, p);
+    			append(p, t0);
+    			append(option, t1);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.myShifts) && t0_value !== (t0_value = 'Starts ' + formatDate(new Date(ctx.choice.fromTime), dateFormat$1) + ' Ends ' + formatDate(new Date(ctx.choice.toTime), dateFormat$1))) {
+    				set_data(t0, t0_value);
+    			}
+
+    			if ((changed.myShifts) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+    		}
+    	};
+    }
+
+    // (321:12) {#if selectedShift}
+    function create_if_block_2(ctx) {
+    	var p0, t0, t1_value = formatDate(new Date(ctx.selectedShift.fromTime), dateFormat$1), t1, t2, p1, t3, t4_value = formatDate(new Date(ctx.selectedShift.toTime), dateFormat$1), t4, t5, button, dispose;
+
+    	return {
+    		c: function create() {
+    			p0 = element("p");
+    			t0 = text("Starts ");
+    			t1 = text(t1_value);
+    			t2 = space();
+    			p1 = element("p");
+    			t3 = text("Ends ");
+    			t4 = text(t4_value);
+    			t5 = space();
+    			button = element("button");
+    			button.textContent = "Propose Selected Shift";
+    			attr(p0, "class", "svelte-f4t0hs");
+    			add_location(p0, file$a, 321, 14, 8890);
+    			attr(p1, "class", "svelte-f4t0hs");
+    			add_location(p1, file$a, 324, 14, 9012);
+    			attr(button, "class", "btn btn-primary");
+    			add_location(button, file$a, 327, 14, 9130);
+    			dispose = listen(button, "click", ctx.proposeShift);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, p0, anchor);
+    			append(p0, t0);
+    			append(p0, t1);
+    			insert(target, t2, anchor);
+    			insert(target, p1, anchor);
+    			append(p1, t3);
+    			append(p1, t4);
+    			insert(target, t5, anchor);
+    			insert(target, button, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.selectedShift) && t1_value !== (t1_value = formatDate(new Date(ctx.selectedShift.fromTime), dateFormat$1))) {
+    				set_data(t1, t1_value);
+    			}
+
+    			if ((changed.selectedShift) && t4_value !== (t4_value = formatDate(new Date(ctx.selectedShift.toTime), dateFormat$1))) {
+    				set_data(t4, t4_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(p0);
+    				detach(t2);
+    				detach(p1);
+    				detach(t5);
+    				detach(button);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    function create_fragment$d(ctx) {
+    	var main, t0, div2, t1, div1, div0, div1_class_value, main_intro;
+
+    	function select_block_type(ctx) {
+    		if (ctx.$connections.length > 0) return create_if_block_5;
+    		return create_else_block_2;
+    	}
+
+    	var current_block_type = select_block_type(ctx);
+    	var if_block0 = current_block_type(ctx);
+
+    	var if_block1 = (ctx.shifts.length > 0) && create_if_block_4(ctx);
+
+    	var if_block2 = (ctx.clickedShift) && create_if_block$2(ctx);
+
+    	return {
+    		c: function create() {
+    			main = element("main");
+    			if_block0.c();
+    			t0 = space();
+    			div2 = element("div");
+    			if (if_block1) if_block1.c();
+    			t1 = space();
+    			div1 = element("div");
+    			div0 = element("div");
+    			if (if_block2) if_block2.c();
+    			attr(div0, "class", "popover__content svelte-f4t0hs");
+    			add_location(div0, file$a, 293, 6, 7769);
+    			attr(div1, "id", "popover__wrapper");
+    			attr(div1, "class", div1_class_value = "" + (ctx.showing ? 'show' : 'hide') + " svelte-f4t0hs");
+    			add_location(div1, file$a, 289, 4, 7652);
+    			attr(div2, "class", "content svelte-f4t0hs");
+    			add_location(div2, file$a, 263, 2, 6680);
+    			attr(main, "class", "svelte-f4t0hs");
+    			add_location(main, file$a, 234, 0, 5703);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, main, anchor);
+    			if_block0.m(main, null);
+    			append(main, t0);
+    			append(main, div2);
+    			if (if_block1) if_block1.m(div2, null);
+    			append(div2, t1);
+    			append(div2, div1);
+    			append(div1, div0);
+    			if (if_block2) if_block2.m(div0, null);
+    			ctx.div1_binding(div1);
+    			ctx.div2_binding(div2);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block0) {
+    				if_block0.p(changed, ctx);
+    			} else {
+    				if_block0.d(1);
+    				if_block0 = current_block_type(ctx);
+    				if (if_block0) {
+    					if_block0.c();
+    					if_block0.m(main, t0);
+    				}
+    			}
+
+    			if (ctx.shifts.length > 0) {
+    				if (if_block1) {
+    					if_block1.p(changed, ctx);
+    				} else {
+    					if_block1 = create_if_block_4(ctx);
+    					if_block1.c();
+    					if_block1.m(div2, t1);
+    				}
+    			} else if (if_block1) {
+    				if_block1.d(1);
+    				if_block1 = null;
+    			}
+
+    			if (ctx.clickedShift) {
+    				if (if_block2) {
+    					if_block2.p(changed, ctx);
+    				} else {
+    					if_block2 = create_if_block$2(ctx);
+    					if_block2.c();
+    					if_block2.m(div0, null);
+    				}
+    			} else if (if_block2) {
+    				if_block2.d(1);
+    				if_block2 = null;
+    			}
+
+    			if ((changed.showing) && div1_class_value !== (div1_class_value = "" + (ctx.showing ? 'show' : 'hide') + " svelte-f4t0hs")) {
+    				attr(div1, "class", div1_class_value);
+    			}
     		},
 
     		i: function intro(local) {
@@ -13543,25 +14562,42 @@ var app = (function () {
     				detach(main);
     			}
 
-    			destroy_each(each_blocks, detaching);
-
-    			run_all(dispose);
+    			if_block0.d();
+    			if (if_block1) if_block1.d();
+    			if (if_block2) if_block2.d();
+    			ctx.div1_binding(null);
+    			ctx.div2_binding(null);
     		}
     	};
     }
 
-    function instance$a($$self, $$props, $$invalidate) {
-    	let $shifts, $connections;
+    let dateFormat$1 = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
 
-    	validate_store(shifts, 'shifts');
-    	subscribe($$self, shifts, $$value => { $shifts = $$value; $$invalidate('$shifts', $shifts); });
+    function instance$a($$self, $$props, $$invalidate) {
+    	let $user, $connections, $menuDisplayed;
+
+    	validate_store(user, 'user');
+    	subscribe($$self, user, $$value => { $user = $$value; $$invalidate('$user', $user); });
     	validate_store(connections, 'connections');
     	subscribe($$self, connections, $$value => { $connections = $$value; $$invalidate('$connections', $connections); });
+    	validate_store(menuDisplayed, 'menuDisplayed');
+    	subscribe($$self, menuDisplayed, $$value => { $menuDisplayed = $$value; $$invalidate('$menuDisplayed', $menuDisplayed); });
 
     	
 
+      let shifts = [];
+      let myShifts = [];
+      let selectedShift;
+      let clickedShift;
+      let showing = false;
+      let requestingShiftConnection = false;
       let selectedCompany;
       let selectedCompanyId = "";
+      let popoverX;
+      let popoverY;
+      let popoverWrapper;
+      let content;
+      let uls = [];
 
       const client = getClient();
 
@@ -13579,11 +14615,45 @@ var app = (function () {
 
         try {
           await getShifts.refetch().then(result => {
-            shifts.set(result);
-            console.log($shifts.data.shifts);
+            $$invalidate('shifts', shifts = result.data.shifts);
+            $$invalidate('myShifts', myShifts = shifts.filter(shift => shift.postedBy.id === $user.id));
+            // console.log(myShifts);
+            console.log(shifts);
           });
         } catch (error) {
           console.log(error);
+        }
+      }
+
+      async function proposeShift() {
+        if (requestingShiftConnection === true) {
+          notifications.info("A Shift Request is in progress!");
+          return;
+        }
+
+        if (!selectedShift || !clickedShift) {
+          notifications.danger("You must select a shift to propose");
+          return;
+        }
+
+        requestingShiftConnection = true;
+
+        try {
+          await mutate(client, {
+            mutation: PROPOSE_SHIFT,
+            variables: {
+              proposedShiftId: selectedShift.id,
+              shiftId: clickedShift.id
+            }
+          }).then(result => {
+            console.log(result.data.createShiftConnection.shiftConnection);
+            notifications.success("Shift Request Sent");
+            requestingShiftConnection = false;
+          });
+        } catch (error) {
+          notifications.danger("Something went wrong! Please try again.");
+          console.log(error);
+          requestingShiftConnection = false;
         }
       }
 
@@ -13596,16 +14666,96 @@ var app = (function () {
       //     console.log(selectedCompany.company.id);
       //   }
 
+      function handleClickedShift(shift, ul) {
+        if (requestingShiftConnection === true) {
+          notifications.info("A Shift Request is in progress!");
+          return;
+        }
+
+        if (showing === true && clickedShift.id === shift.id) {
+          $$invalidate('showing', showing = false);
+          $$invalidate('clickedShift', clickedShift = null);
+          popoverWrapper.style.display = "none"; $$invalidate('popoverWrapper', popoverWrapper);
+          return;
+        }
+
+        $$invalidate('showing', showing = false);
+        $$invalidate('selectedShift', selectedShift = null);
+        popoverWrapper.style.display = "inline-block"; $$invalidate('popoverWrapper', popoverWrapper);
+
+        let contentRect = content.getBoundingClientRect();
+        let ulRect = ul.getBoundingClientRect();
+        let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
+
+        popoverX = ulRect.width / 2 - popoverContentRect.width / 2;
+        popoverY = ulRect.top - contentRect.height + window.scrollY;
+        popoverWrapper.style.left = popoverX + "px"; $$invalidate('popoverWrapper', popoverWrapper);
+        popoverWrapper.style.top = popoverY + "px"; $$invalidate('popoverWrapper', popoverWrapper);
+
+        $$invalidate('clickedShift', clickedShift = shift);
+
+        setTimeout(() => {
+          $$invalidate('showing', showing = true);
+        }, 1);
+      }
+
     	function select_change_handler() {
     		selectedCompany = select_value(this);
     		$$invalidate('selectedCompany', selectedCompany);
     	}
 
+    	function ul_binding($$value, i) {
+    		if (uls[i] === $$value) return;
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			uls[i] = $$value;
+    			$$invalidate('uls', uls);
+    		});
+    	}
+
+    	function click_handler({ shift, i }) {
+    	            handleClickedShift(shift, uls[i]);
+    	          }
+
+    	function select_change_handler_1() {
+    		selectedShift = select_value(this);
+    		$$invalidate('selectedShift', selectedShift);
+    		$$invalidate('myShifts', myShifts);
+    	}
+
+    	function div1_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('popoverWrapper', popoverWrapper = $$value);
+    		});
+    	}
+
+    	function div2_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('content', content = $$value);
+    		});
+    	}
+
     	return {
+    		shifts,
+    		myShifts,
+    		selectedShift,
+    		clickedShift,
+    		showing,
     		selectedCompany,
+    		popoverWrapper,
+    		content,
+    		uls,
     		fetchShifts,
+    		proposeShift,
+    		handleClickedShift,
+    		$user,
     		$connections,
-    		select_change_handler
+    		$menuDisplayed,
+    		select_change_handler,
+    		ul_binding,
+    		click_handler,
+    		select_change_handler_1,
+    		div1_binding,
+    		div2_binding
     	};
     }
 
@@ -13616,34 +14766,156 @@ var app = (function () {
     	}
     }
 
-    /* src\DashBoardRoutes.svelte generated by Svelte v3.6.7 */
-
-
-    const routes = {
-      "/dashboard/invite": InviteEmployee,
-      "/dashboard/invitations": Invitations,
-      "/dashboard/shifts": Shifts
+    const getCalendarPage = (month, year, dayProps) => {
+      let date = new Date(year, month, 1);
+      date.setDate(date.getDate() - date.getDay());
+      let nextMonth = month === 11 ? 0 : month + 1;
+      // ensure days starts on Sunday
+      // and end on saturday
+      let weeks = [];
+      while (date.getMonth() !== nextMonth || date.getDay() !== 0 || weeks.length !== 6) {
+        if (date.getDay() === 0) weeks.unshift({ days: [], id: `${year}${month}${year}${weeks.length}` });
+        weeks[0].days.push({
+          partOfMonth: date.getMonth() === month,
+          date: new Date(date),
+          ...dayProps(date)
+        });
+        date.setDate(date.getDate() + 1);
+      }
+      weeks.reverse();
+      return { month, year, weeks };
     };
 
-    /* src\dashboard\DashBoard.svelte generated by Svelte v3.6.7 */
+    const getDayPropsHandler = (start, end, selectableCallback) => {
+      let today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return date => ({
+        selectable: date >= start && date <= end
+         && (!selectableCallback || selectableCallback(date)),
+        isToday: date.getTime() === today.getTime()
+      });
+    };
 
-    const file$b = "src\\dashboard\\DashBoard.svelte";
+    function getMonths(start, end, selectableCallback = null) {
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      let endDate = new Date(end.getFullYear(), end.getMonth() + 1, 1);
+      let months = [];
+      let date = new Date(start.getFullYear(), start.getMonth(), 1);
+      let dayPropsHandler = getDayPropsHandler(start, end, selectableCallback);
+      while (date < endDate) {
+        months.push(getCalendarPage(date.getMonth(), date.getFullYear(), dayPropsHandler));
+        date.setMonth(date.getMonth() + 1);
+      }
+      return months;
+    }
 
-    function create_fragment$e(ctx) {
-    	var div, div_intro, t, current;
+    const areDatesEquivalent = (a, b) => a.getDate() === b.getDate()
+      && a.getMonth() === b.getMonth()
+      && a.getFullYear() === b.getFullYear();
 
-    	var router = new Router({
-    		props: { routes: routes },
-    		$$inline: true
-    	});
+    /* node_modules\svelte-calendar\src\Components\Week.svelte generated by Svelte v3.6.7 */
+
+    const file$b = "node_modules\\svelte-calendar\\src\\Components\\Week.svelte";
+
+    function get_each_context$4(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.day = list[i];
+    	return child_ctx;
+    }
+
+    // (22:2) {#each days as day}
+    function create_each_block$4(ctx) {
+    	var div, button, t0_value = ctx.day.date.getDate(), t0, t1, dispose;
+
+    	function click_handler() {
+    		return ctx.click_handler(ctx);
+    	}
 
     	return {
     		c: function create() {
     			div = element("div");
-    			t = space();
-    			router.$$.fragment.c();
-    			attr(div, "class", "svelte-4qciy9");
-    			add_location(div, file$b, 64, 0, 1526);
+    			button = element("button");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			attr(button, "class", "day--label svelte-7mtl66");
+    			attr(button, "type", "button");
+    			toggle_class(button, "selected", areDatesEquivalent(ctx.day.date, ctx.selected));
+    			toggle_class(button, "highlighted", areDatesEquivalent(ctx.day.date, ctx.highlighted));
+    			toggle_class(button, "shake-date", ctx.shouldShakeDate && areDatesEquivalent(ctx.day.date, ctx.shouldShakeDate));
+    			toggle_class(button, "disabled", !ctx.day.selectable);
+    			add_location(button, file$b, 28, 6, 678);
+    			attr(div, "class", "day svelte-7mtl66");
+    			toggle_class(div, "outside-month", !ctx.day.partOfMonth);
+    			toggle_class(div, "is-today", ctx.day.isToday);
+    			toggle_class(div, "is-disabled", !ctx.day.selectable);
+    			add_location(div, file$b, 22, 4, 519);
+    			dispose = listen(button, "click", click_handler);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, button);
+    			append(button, t0);
+    			append(div, t1);
+    		},
+
+    		p: function update(changed, new_ctx) {
+    			ctx = new_ctx;
+    			if ((changed.days) && t0_value !== (t0_value = ctx.day.date.getDate())) {
+    				set_data(t0, t0_value);
+    			}
+
+    			if ((changed.areDatesEquivalent || changed.days || changed.selected)) {
+    				toggle_class(button, "selected", areDatesEquivalent(ctx.day.date, ctx.selected));
+    			}
+
+    			if ((changed.areDatesEquivalent || changed.days || changed.highlighted)) {
+    				toggle_class(button, "highlighted", areDatesEquivalent(ctx.day.date, ctx.highlighted));
+    			}
+
+    			if ((changed.shouldShakeDate || changed.areDatesEquivalent || changed.days)) {
+    				toggle_class(button, "shake-date", ctx.shouldShakeDate && areDatesEquivalent(ctx.day.date, ctx.shouldShakeDate));
+    			}
+
+    			if (changed.days) {
+    				toggle_class(button, "disabled", !ctx.day.selectable);
+    				toggle_class(div, "outside-month", !ctx.day.partOfMonth);
+    				toggle_class(div, "is-today", ctx.day.isToday);
+    				toggle_class(div, "is-disabled", !ctx.day.selectable);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    function create_fragment$e(ctx) {
+    	var div, div_intro, div_outro, current;
+
+    	var each_value = ctx.days;
+
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$4(get_each_context$4(ctx, each_value, i));
+    	}
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+    			attr(div, "class", "week svelte-7mtl66");
+    			add_location(div, file$b, 16, 0, 379);
     		},
 
     		l: function claim(nodes) {
@@ -13652,19 +14924,3221 @@ var app = (function () {
 
     		m: function mount(target, anchor) {
     			insert(target, div, anchor);
-    			insert(target, t, anchor);
-    			mount_component(router, target, anchor);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div, null);
+    			}
+
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			var router_changes = {};
-    			if (changed.routes) router_changes.routes = routes;
-    			router.$set(router_changes);
+    			if (changed.days || changed.areDatesEquivalent || changed.selected || changed.highlighted || changed.shouldShakeDate) {
+    				each_value = ctx.days;
+
+    				for (var i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$4(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    					} else {
+    						each_blocks[i] = create_each_block$4(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(div, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+    				each_blocks.length = each_value.length;
+    			}
     		},
 
     		i: function intro(local) {
     			if (current) return;
+    			add_render_callback(() => {
+    				if (div_outro) div_outro.end(1);
+    				if (!div_intro) div_intro = create_in_transition(div, fly, { x: ctx.direction * 50, duration: 180, delay: 90 });
+    				div_intro.start();
+    			});
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			if (div_intro) div_intro.invalidate();
+
+    			div_outro = create_out_transition(div, fade, { duration: 180 });
+
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			destroy_each(each_blocks, detaching);
+
+    			if (detaching) {
+    				if (div_outro) div_outro.end();
+    			}
+    		}
+    	};
+    }
+
+    function instance$b($$self, $$props, $$invalidate) {
+    	
+
+      const dispatch = createEventDispatcher();
+
+      let { days, selected, start, end, highlighted, shouldShakeDate, direction } = $$props;
+
+    	const writable_props = ['days', 'selected', 'start', 'end', 'highlighted', 'shouldShakeDate', 'direction'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Week> was created with unknown prop '${key}'`);
+    	});
+
+    	function click_handler({ day }) {
+    		return dispatch('dateSelected', day.date);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('days' in $$props) $$invalidate('days', days = $$props.days);
+    		if ('selected' in $$props) $$invalidate('selected', selected = $$props.selected);
+    		if ('start' in $$props) $$invalidate('start', start = $$props.start);
+    		if ('end' in $$props) $$invalidate('end', end = $$props.end);
+    		if ('highlighted' in $$props) $$invalidate('highlighted', highlighted = $$props.highlighted);
+    		if ('shouldShakeDate' in $$props) $$invalidate('shouldShakeDate', shouldShakeDate = $$props.shouldShakeDate);
+    		if ('direction' in $$props) $$invalidate('direction', direction = $$props.direction);
+    	};
+
+    	return {
+    		dispatch,
+    		days,
+    		selected,
+    		start,
+    		end,
+    		highlighted,
+    		shouldShakeDate,
+    		direction,
+    		click_handler
+    	};
+    }
+
+    class Week extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$b, create_fragment$e, safe_not_equal, ["days", "selected", "start", "end", "highlighted", "shouldShakeDate", "direction"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.days === undefined && !('days' in props)) {
+    			console.warn("<Week> was created without expected prop 'days'");
+    		}
+    		if (ctx.selected === undefined && !('selected' in props)) {
+    			console.warn("<Week> was created without expected prop 'selected'");
+    		}
+    		if (ctx.start === undefined && !('start' in props)) {
+    			console.warn("<Week> was created without expected prop 'start'");
+    		}
+    		if (ctx.end === undefined && !('end' in props)) {
+    			console.warn("<Week> was created without expected prop 'end'");
+    		}
+    		if (ctx.highlighted === undefined && !('highlighted' in props)) {
+    			console.warn("<Week> was created without expected prop 'highlighted'");
+    		}
+    		if (ctx.shouldShakeDate === undefined && !('shouldShakeDate' in props)) {
+    			console.warn("<Week> was created without expected prop 'shouldShakeDate'");
+    		}
+    		if (ctx.direction === undefined && !('direction' in props)) {
+    			console.warn("<Week> was created without expected prop 'direction'");
+    		}
+    	}
+
+    	get days() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set days(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get selected() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set selected(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get start() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set start(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get end() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set end(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get highlighted() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set highlighted(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get shouldShakeDate() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set shouldShakeDate(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get direction() {
+    		throw new Error("<Week>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set direction(value) {
+    		throw new Error("<Week>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* node_modules\svelte-calendar\src\Components\Month.svelte generated by Svelte v3.6.7 */
+
+    const file$c = "node_modules\\svelte-calendar\\src\\Components\\Month.svelte";
+
+    function get_each_context$5(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.week = list[i];
+    	return child_ctx;
+    }
+
+    // (22:2) {#each visibleMonth.weeks as week (week.id) }
+    function create_each_block$5(key_1, ctx) {
+    	var first, current;
+
+    	var week = new Week({
+    		props: {
+    		days: ctx.week.days,
+    		selected: ctx.selected,
+    		start: ctx.start,
+    		end: ctx.end,
+    		highlighted: ctx.highlighted,
+    		shouldShakeDate: ctx.shouldShakeDate,
+    		direction: ctx.direction
+    	},
+    		$$inline: true
+    	});
+    	week.$on("dateSelected", ctx.dateSelected_handler);
+
+    	return {
+    		key: key_1,
+
+    		first: null,
+
+    		c: function create() {
+    			first = empty();
+    			week.$$.fragment.c();
+    			this.first = first;
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, first, anchor);
+    			mount_component(week, target, anchor);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var week_changes = {};
+    			if (changed.visibleMonth) week_changes.days = ctx.week.days;
+    			if (changed.selected) week_changes.selected = ctx.selected;
+    			if (changed.start) week_changes.start = ctx.start;
+    			if (changed.end) week_changes.end = ctx.end;
+    			if (changed.highlighted) week_changes.highlighted = ctx.highlighted;
+    			if (changed.shouldShakeDate) week_changes.shouldShakeDate = ctx.shouldShakeDate;
+    			if (changed.direction) week_changes.direction = ctx.direction;
+    			week.$set(week_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(week.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(week.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(first);
+    			}
+
+    			destroy_component(week, detaching);
+    		}
+    	};
+    }
+
+    function create_fragment$f(ctx) {
+    	var div, each_blocks = [], each_1_lookup = new Map(), current;
+
+    	var each_value = ctx.visibleMonth.weeks;
+
+    	const get_key = ctx => ctx.week.id;
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		let child_ctx = get_each_context$5(ctx, each_value, i);
+    		let key = get_key(child_ctx);
+    		each_1_lookup.set(key, each_blocks[i] = create_each_block$5(key, child_ctx));
+    	}
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].c();
+    			attr(div, "class", "month-container svelte-ny3kda");
+    			add_location(div, file$c, 20, 0, 322);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].m(div, null);
+
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			const each_value = ctx.visibleMonth.weeks;
+
+    			group_outros();
+    			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, div, outro_and_destroy_block, create_each_block$5, null, get_each_context$5);
+    			check_outros();
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			for (var i = 0; i < each_value.length; i += 1) transition_in(each_blocks[i]);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			for (i = 0; i < each_blocks.length; i += 1) transition_out(each_blocks[i]);
+
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].d();
+    		}
+    	};
+    }
+
+    function instance$c($$self, $$props, $$invalidate) {
+    	let { id, visibleMonth, selected, start, end, highlighted, shouldShakeDate } = $$props;
+
+      let lastId = id;
+      let direction;
+
+    	const writable_props = ['id', 'visibleMonth', 'selected', 'start', 'end', 'highlighted', 'shouldShakeDate'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Month> was created with unknown prop '${key}'`);
+    	});
+
+    	function dateSelected_handler(event) {
+    		bubble($$self, event);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('id' in $$props) $$invalidate('id', id = $$props.id);
+    		if ('visibleMonth' in $$props) $$invalidate('visibleMonth', visibleMonth = $$props.visibleMonth);
+    		if ('selected' in $$props) $$invalidate('selected', selected = $$props.selected);
+    		if ('start' in $$props) $$invalidate('start', start = $$props.start);
+    		if ('end' in $$props) $$invalidate('end', end = $$props.end);
+    		if ('highlighted' in $$props) $$invalidate('highlighted', highlighted = $$props.highlighted);
+    		if ('shouldShakeDate' in $$props) $$invalidate('shouldShakeDate', shouldShakeDate = $$props.shouldShakeDate);
+    	};
+
+    	$$self.$$.update = ($$dirty = { lastId: 1, id: 1 }) => {
+    		if ($$dirty.lastId || $$dirty.id) { {
+            $$invalidate('direction', direction = lastId < id ? 1 : -1);
+            $$invalidate('lastId', lastId = id);
+          } }
+    	};
+
+    	return {
+    		id,
+    		visibleMonth,
+    		selected,
+    		start,
+    		end,
+    		highlighted,
+    		shouldShakeDate,
+    		direction,
+    		dateSelected_handler
+    	};
+    }
+
+    class Month extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$c, create_fragment$f, safe_not_equal, ["id", "visibleMonth", "selected", "start", "end", "highlighted", "shouldShakeDate"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.id === undefined && !('id' in props)) {
+    			console.warn("<Month> was created without expected prop 'id'");
+    		}
+    		if (ctx.visibleMonth === undefined && !('visibleMonth' in props)) {
+    			console.warn("<Month> was created without expected prop 'visibleMonth'");
+    		}
+    		if (ctx.selected === undefined && !('selected' in props)) {
+    			console.warn("<Month> was created without expected prop 'selected'");
+    		}
+    		if (ctx.start === undefined && !('start' in props)) {
+    			console.warn("<Month> was created without expected prop 'start'");
+    		}
+    		if (ctx.end === undefined && !('end' in props)) {
+    			console.warn("<Month> was created without expected prop 'end'");
+    		}
+    		if (ctx.highlighted === undefined && !('highlighted' in props)) {
+    			console.warn("<Month> was created without expected prop 'highlighted'");
+    		}
+    		if (ctx.shouldShakeDate === undefined && !('shouldShakeDate' in props)) {
+    			console.warn("<Month> was created without expected prop 'shouldShakeDate'");
+    		}
+    	}
+
+    	get id() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set id(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get visibleMonth() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set visibleMonth(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get selected() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set selected(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get start() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set start(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get end() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set end(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get highlighted() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set highlighted(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get shouldShakeDate() {
+    		throw new Error("<Month>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set shouldShakeDate(value) {
+    		throw new Error("<Month>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    const monthDict = [
+      { name: 'January', abbrev: 'Jan' },
+      { name: 'February', abbrev: 'Feb' },
+      { name: 'March', abbrev: 'Mar' },
+      { name: 'April', abbrev: 'Apr' },
+      { name: 'May', abbrev: 'May' },
+      { name: 'June', abbrev: 'Jun' },
+      { name: 'July', abbrev: 'Jul' },
+      { name: 'August', abbrev: 'Aug' },
+      { name: 'September', abbrev: 'Sep' },
+      { name: 'October', abbrev: 'Oct' },
+      { name: 'November', abbrev: 'Nov' },
+      { name: 'December', abbrev: 'Dec' }
+    ];
+
+    const dayDict = [
+      { name: 'Sunday', abbrev: 'Sun' },
+      { name: 'Monday', abbrev: 'Mon' },
+      { name: 'Tuesday', abbrev: 'Tue' },
+      { name: 'Wednesday', abbrev: 'Wed' },
+      { name: 'Thursday', abbrev: 'Thu' },
+      { name: 'Friday', abbrev: 'Fri' },
+      { name: 'Saturday', abbrev: 'Sat' }
+    ];
+
+    /* node_modules\svelte-calendar\src\Components\NavBar.svelte generated by Svelte v3.6.7 */
+
+    const file$d = "node_modules\\svelte-calendar\\src\\Components\\NavBar.svelte";
+
+    function get_each_context$6(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.monthDefinition = list[i];
+    	child_ctx.index = i;
+    	return child_ctx;
+    }
+
+    // (61:4) {#each availableMonths as monthDefinition, index}
+    function create_each_block$6(ctx) {
+    	var div, span, t0_value = ctx.monthDefinition.abbrev, t0, t1, dispose;
+
+    	function click_handler_2(...args) {
+    		return ctx.click_handler_2(ctx, ...args);
+    	}
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			span = element("span");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			attr(span, "class", "svelte-gfrd1b");
+    			add_location(span, file$d, 67, 8, 1841);
+    			attr(div, "class", "month-selector--month svelte-gfrd1b");
+    			toggle_class(div, "selected", ctx.index === ctx.month);
+    			toggle_class(div, "selectable", ctx.monthDefinition.selectable);
+    			add_location(div, file$d, 61, 6, 1637);
+    			dispose = listen(div, "click", click_handler_2);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, span);
+    			append(span, t0);
+    			append(div, t1);
+    		},
+
+    		p: function update(changed, new_ctx) {
+    			ctx = new_ctx;
+    			if ((changed.availableMonths) && t0_value !== (t0_value = ctx.monthDefinition.abbrev)) {
+    				set_data(t0, t0_value);
+    			}
+
+    			if (changed.month) {
+    				toggle_class(div, "selected", ctx.index === ctx.month);
+    			}
+
+    			if (changed.availableMonths) {
+    				toggle_class(div, "selectable", ctx.monthDefinition.selectable);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    function create_fragment$g(ctx) {
+    	var div5, div3, div0, i0, t0, div1, t1_value = monthDict[ctx.month].name, t1, t2, t3, t4, div2, i1, t5, div4, dispose;
+
+    	var each_value = ctx.availableMonths;
+
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$6(get_each_context$6(ctx, each_value, i));
+    	}
+
+    	return {
+    		c: function create() {
+    			div5 = element("div");
+    			div3 = element("div");
+    			div0 = element("div");
+    			i0 = element("i");
+    			t0 = space();
+    			div1 = element("div");
+    			t1 = text(t1_value);
+    			t2 = space();
+    			t3 = text(ctx.year);
+    			t4 = space();
+    			div2 = element("div");
+    			i1 = element("i");
+    			t5 = space();
+    			div4 = element("div");
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+    			attr(i0, "class", "arrow left svelte-gfrd1b");
+    			add_location(i0, file$d, 48, 6, 1196);
+    			attr(div0, "class", "control svelte-gfrd1b");
+    			toggle_class(div0, "enabled", ctx.canDecrementMonth);
+    			add_location(div0, file$d, 45, 4, 1073);
+    			attr(div1, "class", "label svelte-gfrd1b");
+    			add_location(div1, file$d, 50, 4, 1238);
+    			attr(i1, "class", "arrow right svelte-gfrd1b");
+    			add_location(i1, file$d, 56, 6, 1467);
+    			attr(div2, "class", "control svelte-gfrd1b");
+    			toggle_class(div2, "enabled", ctx.canIncrementMonth);
+    			add_location(div2, file$d, 53, 4, 1346);
+    			attr(div3, "class", "heading-section svelte-gfrd1b");
+    			add_location(div3, file$d, 44, 2, 1039);
+    			attr(div4, "class", "month-selector svelte-gfrd1b");
+    			toggle_class(div4, "open", ctx.monthSelectorOpen);
+    			add_location(div4, file$d, 59, 2, 1517);
+    			attr(div5, "class", "title");
+    			add_location(div5, file$d, 43, 0, 1017);
+
+    			dispose = [
+    				listen(div0, "click", ctx.click_handler),
+    				listen(div1, "click", ctx.toggleMonthSelectorOpen),
+    				listen(div2, "click", ctx.click_handler_1)
+    			];
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div5, anchor);
+    			append(div5, div3);
+    			append(div3, div0);
+    			append(div0, i0);
+    			append(div3, t0);
+    			append(div3, div1);
+    			append(div1, t1);
+    			append(div1, t2);
+    			append(div1, t3);
+    			append(div3, t4);
+    			append(div3, div2);
+    			append(div2, i1);
+    			append(div5, t5);
+    			append(div5, div4);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div4, null);
+    			}
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.canDecrementMonth) {
+    				toggle_class(div0, "enabled", ctx.canDecrementMonth);
+    			}
+
+    			if ((changed.month) && t1_value !== (t1_value = monthDict[ctx.month].name)) {
+    				set_data(t1, t1_value);
+    			}
+
+    			if (changed.year) {
+    				set_data(t3, ctx.year);
+    			}
+
+    			if (changed.canIncrementMonth) {
+    				toggle_class(div2, "enabled", ctx.canIncrementMonth);
+    			}
+
+    			if (changed.month || changed.availableMonths) {
+    				each_value = ctx.availableMonths;
+
+    				for (var i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$6(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    					} else {
+    						each_blocks[i] = create_each_block$6(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(div4, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+    				each_blocks.length = each_value.length;
+    			}
+
+    			if (changed.monthSelectorOpen) {
+    				toggle_class(div4, "open", ctx.monthSelectorOpen);
+    			}
+    		},
+
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div5);
+    			}
+
+    			destroy_each(each_blocks, detaching);
+
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    function instance$d($$self, $$props, $$invalidate) {
+    	
+
+      const dispatch = createEventDispatcher();
+
+      let { month, start, end, year, canIncrementMonth, canDecrementMonth } = $$props;
+
+      let monthSelectorOpen = false;
+      let availableMonths;
+
+      function toggleMonthSelectorOpen() {
+        $$invalidate('monthSelectorOpen', monthSelectorOpen = !monthSelectorOpen);
+      }
+
+      function monthSelected(event, m) {
+        event.stopPropagation();
+        dispatch('monthSelected', m);
+        toggleMonthSelectorOpen();
+      }
+
+    	const writable_props = ['month', 'start', 'end', 'year', 'canIncrementMonth', 'canDecrementMonth'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<NavBar> was created with unknown prop '${key}'`);
+    	});
+
+    	function click_handler() {
+    		return dispatch('incrementMonth', -1);
+    	}
+
+    	function click_handler_1() {
+    		return dispatch('incrementMonth', 1);
+    	}
+
+    	function click_handler_2({ index }, e) {
+    		return monthSelected(e, index);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('month' in $$props) $$invalidate('month', month = $$props.month);
+    		if ('start' in $$props) $$invalidate('start', start = $$props.start);
+    		if ('end' in $$props) $$invalidate('end', end = $$props.end);
+    		if ('year' in $$props) $$invalidate('year', year = $$props.year);
+    		if ('canIncrementMonth' in $$props) $$invalidate('canIncrementMonth', canIncrementMonth = $$props.canIncrementMonth);
+    		if ('canDecrementMonth' in $$props) $$invalidate('canDecrementMonth', canDecrementMonth = $$props.canDecrementMonth);
+    	};
+
+    	$$self.$$.update = ($$dirty = { start: 1, year: 1, end: 1 }) => {
+    		if ($$dirty.start || $$dirty.year || $$dirty.end) { {
+            let isOnLowerBoundary = start.getFullYear() === year;
+            let isOnUpperBoundary = end.getFullYear() === year;
+            $$invalidate('availableMonths', availableMonths = monthDict.map((m, i) => {
+              return {
+                ...m,
+                selectable:
+                  (!isOnLowerBoundary && !isOnUpperBoundary)
+                || (
+                  (!isOnLowerBoundary || i >= start.getMonth())
+                  && (!isOnUpperBoundary || i <= end.getMonth())
+                )
+              };
+            }));
+          } }
+    	};
+
+    	return {
+    		dispatch,
+    		month,
+    		start,
+    		end,
+    		year,
+    		canIncrementMonth,
+    		canDecrementMonth,
+    		monthSelectorOpen,
+    		availableMonths,
+    		toggleMonthSelectorOpen,
+    		monthSelected,
+    		click_handler,
+    		click_handler_1,
+    		click_handler_2
+    	};
+    }
+
+    class NavBar extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$d, create_fragment$g, safe_not_equal, ["month", "start", "end", "year", "canIncrementMonth", "canDecrementMonth"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.month === undefined && !('month' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'month'");
+    		}
+    		if (ctx.start === undefined && !('start' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'start'");
+    		}
+    		if (ctx.end === undefined && !('end' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'end'");
+    		}
+    		if (ctx.year === undefined && !('year' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'year'");
+    		}
+    		if (ctx.canIncrementMonth === undefined && !('canIncrementMonth' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'canIncrementMonth'");
+    		}
+    		if (ctx.canDecrementMonth === undefined && !('canDecrementMonth' in props)) {
+    			console.warn("<NavBar> was created without expected prop 'canDecrementMonth'");
+    		}
+    	}
+
+    	get month() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set month(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get start() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set start(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get end() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set end(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get year() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set year(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get canIncrementMonth() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set canIncrementMonth(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get canDecrementMonth() {
+    		throw new Error("<NavBar>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set canDecrementMonth(value) {
+    		throw new Error("<NavBar>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* node_modules\svelte-calendar\src\Components\Popover.svelte generated by Svelte v3.6.7 */
+    const { window: window_1 } = globals;
+
+    const file$e = "node_modules\\svelte-calendar\\src\\Components\\Popover.svelte";
+
+    const get_contents_slot_changes = () => ({});
+    const get_contents_slot_context = () => ({});
+
+    const get_trigger_slot_changes = () => ({});
+    const get_trigger_slot_context = () => ({});
+
+    function create_fragment$h(ctx) {
+    	var div4, div0, t, div3, div2, div1, current, dispose;
+
+    	add_render_callback(ctx.onwindowresize);
+
+    	const trigger_slot_1 = ctx.$$slots.trigger;
+    	const trigger_slot = create_slot(trigger_slot_1, ctx, get_trigger_slot_context);
+
+    	const contents_slot_1 = ctx.$$slots.contents;
+    	const contents_slot = create_slot(contents_slot_1, ctx, get_contents_slot_context);
+
+    	return {
+    		c: function create() {
+    			div4 = element("div");
+    			div0 = element("div");
+
+    			if (trigger_slot) trigger_slot.c();
+    			t = space();
+    			div3 = element("div");
+    			div2 = element("div");
+    			div1 = element("div");
+
+    			if (contents_slot) contents_slot.c();
+
+    			attr(div0, "class", "trigger");
+    			add_location(div0, file$e, 102, 2, 2323);
+
+    			attr(div1, "class", "contents-inner svelte-1abig9l");
+    			add_location(div1, file$e, 113, 6, 2710);
+    			attr(div2, "class", "contents svelte-1abig9l");
+    			add_location(div2, file$e, 112, 4, 2652);
+    			attr(div3, "class", "contents-wrapper svelte-1abig9l");
+    			set_style(div3, "transform", "translate(-50%,-50%) translate(" + ctx.translateX + "px, " + ctx.translateY + "px)");
+    			toggle_class(div3, "visible", ctx.open);
+    			toggle_class(div3, "shrink", ctx.shrink);
+    			add_location(div3, file$e, 106, 2, 2441);
+    			attr(div4, "class", "popover svelte-1abig9l");
+    			add_location(div4, file$e, 101, 0, 2279);
+
+    			dispose = [
+    				listen(window_1, "resize", ctx.onwindowresize),
+    				listen(div0, "click", ctx.doOpen)
+    			];
+    		},
+
+    		l: function claim(nodes) {
+    			if (trigger_slot) trigger_slot.l(div0_nodes);
+
+    			if (contents_slot) contents_slot.l(div1_nodes);
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div4, anchor);
+    			append(div4, div0);
+
+    			if (trigger_slot) {
+    				trigger_slot.m(div0, null);
+    			}
+
+    			ctx.div0_binding(div0);
+    			append(div4, t);
+    			append(div4, div3);
+    			append(div3, div2);
+    			append(div2, div1);
+
+    			if (contents_slot) {
+    				contents_slot.m(div1, null);
+    			}
+
+    			ctx.div2_binding(div2);
+    			ctx.div3_binding(div3);
+    			ctx.div4_binding(div4);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (trigger_slot && trigger_slot.p && changed.$$scope) {
+    				trigger_slot.p(get_slot_changes(trigger_slot_1, ctx, changed, get_trigger_slot_changes), get_slot_context(trigger_slot_1, ctx, get_trigger_slot_context));
+    			}
+
+    			if (contents_slot && contents_slot.p && changed.$$scope) {
+    				contents_slot.p(get_slot_changes(contents_slot_1, ctx, changed, get_contents_slot_changes), get_slot_context(contents_slot_1, ctx, get_contents_slot_context));
+    			}
+
+    			if (!current || changed.translateX || changed.translateY) {
+    				set_style(div3, "transform", "translate(-50%,-50%) translate(" + ctx.translateX + "px, " + ctx.translateY + "px)");
+    			}
+
+    			if (changed.open) {
+    				toggle_class(div3, "visible", ctx.open);
+    			}
+
+    			if (changed.shrink) {
+    				toggle_class(div3, "shrink", ctx.shrink);
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(trigger_slot, local);
+    			transition_in(contents_slot, local);
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(trigger_slot, local);
+    			transition_out(contents_slot, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div4);
+    			}
+
+    			if (trigger_slot) trigger_slot.d(detaching);
+    			ctx.div0_binding(null);
+
+    			if (contents_slot) contents_slot.d(detaching);
+    			ctx.div2_binding(null);
+    			ctx.div3_binding(null);
+    			ctx.div4_binding(null);
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    function instance$e($$self, $$props, $$invalidate) {
+    	const dispatch = createEventDispatcher();
+
+      let once = (el, evt, cb) => {
+        function handler() {
+          cb.apply(this, arguments);
+          el.removeEventListener(evt, handler);
+        }
+        el.addEventListener(evt, handler);
+      };
+
+      let popover;
+      let w;
+      let triggerContainer;
+      let contentsAnimated;
+      let contentsWrapper;
+      let translateY = 0;
+      let translateX = 0;
+
+      let { open = false, shrink, trigger } = $$props;
+      const close = () => {
+        $$invalidate('shrink', shrink = true);
+        once(contentsAnimated, 'animationend', () => {
+          $$invalidate('shrink', shrink = false);
+          $$invalidate('open', open = false);
+          dispatch('closed');
+        });
+      };
+
+      function checkForFocusLoss(evt) {
+        if (!open) return;
+        let el = evt.target;
+        // eslint-disable-next-line
+        do {
+          if (el === popover) return;
+        } while (el = el.parentNode);
+        close();
+      }
+
+      onMount(() => {
+        document.addEventListener('click', checkForFocusLoss);
+        if (!trigger) return;
+        triggerContainer.appendChild(trigger.parentNode.removeChild(trigger));
+
+        // eslint-disable-next-line
+        return () => {
+          document.removeEventListener('click', checkForFocusLoss);
+        };
+      });
+
+      const getDistanceToEdges = async () => {
+        if (!open) { $$invalidate('open', open = true); }
+        await tick();
+        let rect = contentsWrapper.getBoundingClientRect();
+        return {
+          top: rect.top + (-1 * translateY),
+          bottom: window.innerHeight - rect.bottom + translateY,
+          left: rect.left + (-1 * translateX),
+          right: document.body.clientWidth - rect.right + translateX
+        };
+      };
+
+      const getTranslate = async () => {
+        let dist = await getDistanceToEdges();
+        let x; let
+          y;
+        if (w < 480) {
+          y = dist.bottom;
+        } else if (dist.top < 0) {
+          y = Math.abs(dist.top);
+        } else if (dist.bottom < 0) {
+          y = dist.bottom;
+        } else {
+          y = 0;
+        }
+        if (dist.left < 0) {
+          x = Math.abs(dist.left);
+        } else if (dist.right < 0) {
+          x = dist.right;
+        } else {
+          x = 0;
+        }
+        return { x, y };
+      };
+
+      const doOpen = async () => {
+        const { x, y } = await getTranslate();
+
+        $$invalidate('translateX', translateX = x);
+        $$invalidate('translateY', translateY = y);
+        $$invalidate('open', open = true);
+
+        dispatch('opened');
+      };
+
+    	const writable_props = ['open', 'shrink', 'trigger'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Popover> was created with unknown prop '${key}'`);
+    	});
+
+    	let { $$slots = {}, $$scope } = $$props;
+
+    	function onwindowresize() {
+    		w = window_1.innerWidth; $$invalidate('w', w);
+    	}
+
+    	function div0_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('triggerContainer', triggerContainer = $$value);
+    		});
+    	}
+
+    	function div2_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('contentsAnimated', contentsAnimated = $$value);
+    		});
+    	}
+
+    	function div3_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('contentsWrapper', contentsWrapper = $$value);
+    		});
+    	}
+
+    	function div4_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('popover', popover = $$value);
+    		});
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('open' in $$props) $$invalidate('open', open = $$props.open);
+    		if ('shrink' in $$props) $$invalidate('shrink', shrink = $$props.shrink);
+    		if ('trigger' in $$props) $$invalidate('trigger', trigger = $$props.trigger);
+    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    	};
+
+    	return {
+    		popover,
+    		w,
+    		triggerContainer,
+    		contentsAnimated,
+    		contentsWrapper,
+    		translateY,
+    		translateX,
+    		open,
+    		shrink,
+    		trigger,
+    		close,
+    		doOpen,
+    		onwindowresize,
+    		div0_binding,
+    		div2_binding,
+    		div3_binding,
+    		div4_binding,
+    		$$slots,
+    		$$scope
+    	};
+    }
+
+    class Popover extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$e, create_fragment$h, safe_not_equal, ["open", "shrink", "trigger", "close"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.shrink === undefined && !('shrink' in props)) {
+    			console.warn("<Popover> was created without expected prop 'shrink'");
+    		}
+    		if (ctx.trigger === undefined && !('trigger' in props)) {
+    			console.warn("<Popover> was created without expected prop 'trigger'");
+    		}
+    	}
+
+    	get open() {
+    		throw new Error("<Popover>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set open(value) {
+    		throw new Error("<Popover>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get shrink() {
+    		throw new Error("<Popover>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set shrink(value) {
+    		throw new Error("<Popover>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get trigger() {
+    		throw new Error("<Popover>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set trigger(value) {
+    		throw new Error("<Popover>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get close() {
+    		return this.$$.ctx.close;
+    	}
+
+    	set close(value) {
+    		throw new Error("<Popover>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    const keyCodes = {
+      left: 37,
+      up: 38,
+      right: 39,
+      down: 40,
+      pgup: 33,
+      pgdown: 34,
+      enter: 13,
+      escape: 27,
+      tab: 9
+    };
+
+    const keyCodesArray = Object.keys(keyCodes).map(k => keyCodes[k]);
+
+    /* node_modules\svelte-calendar\src\Components\Datepicker.svelte generated by Svelte v3.6.7 */
+
+    const file$f = "node_modules\\svelte-calendar\\src\\Components\\Datepicker.svelte";
+
+    function get_each_context$7(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.day = list[i];
+    	return child_ctx;
+    }
+
+    // (202:8) {#if !trigger}
+    function create_if_block$3(ctx) {
+    	var button, t;
+
+    	return {
+    		c: function create() {
+    			button = element("button");
+    			t = text(ctx.formattedSelected);
+    			attr(button, "class", "calendar-button svelte-1kuaxoc");
+    			attr(button, "type", "button");
+    			add_location(button, file$f, 202, 8, 5384);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, button, anchor);
+    			append(button, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.formattedSelected) {
+    				set_data(t, ctx.formattedSelected);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(button);
+    			}
+    		}
+    	};
+    }
+
+    // (200:4) <div slot="trigger">
+    function create_trigger_slot(ctx) {
+    	var div, current;
+
+    	const default_slot_1 = ctx.$$slots.default;
+    	const default_slot = create_slot(default_slot_1, ctx, null);
+
+    	var if_block = (!ctx.trigger) && create_if_block$3(ctx);
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+
+    			if (!default_slot) {
+    				if (if_block) if_block.c();
+    			}
+
+    			if (default_slot) default_slot.c();
+
+    			attr(div, "slot", "trigger");
+    			attr(div, "class", "svelte-1kuaxoc");
+    			add_location(div, file$f, 199, 4, 5319);
+    		},
+
+    		l: function claim(nodes) {
+    			if (default_slot) default_slot.l(div_nodes);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+
+    			if (!default_slot) {
+    				if (if_block) if_block.m(div, null);
+    			}
+
+    			else {
+    				default_slot.m(div, null);
+    			}
+
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (!default_slot) {
+    				if (!ctx.trigger) {
+    					if (if_block) {
+    						if_block.p(changed, ctx);
+    					} else {
+    						if_block = create_if_block$3(ctx);
+    						if_block.c();
+    						if_block.m(div, null);
+    					}
+    				} else if (if_block) {
+    					if_block.d(1);
+    					if_block = null;
+    				}
+    			}
+
+    			if (default_slot && default_slot.p && changed.$$scope) {
+    				default_slot.p(get_slot_changes(default_slot_1, ctx, changed, null), get_slot_context(default_slot_1, ctx, null));
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(default_slot, local);
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(default_slot, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			if (!default_slot) {
+    				if (if_block) if_block.d();
+    			}
+
+    			if (default_slot) default_slot.d(detaching);
+    		}
+    	};
+    }
+
+    // (215:10) {#each dayDict as day}
+    function create_each_block$7(ctx) {
+    	var span, t_value = ctx.day.abbrev, t;
+
+    	return {
+    		c: function create() {
+    			span = element("span");
+    			t = text(t_value);
+    			attr(span, "class", "svelte-1kuaxoc");
+    			add_location(span, file$f, 215, 10, 5845);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, span, anchor);
+    			append(span, t);
+    		},
+
+    		p: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(span);
+    			}
+    		}
+    	};
+    }
+
+    // (209:4) <div slot="contents">
+    function create_contents_slot(ctx) {
+    	var div0, div2, t0, div1, t1, current;
+
+    	var navbar = new NavBar({
+    		props: {
+    		month: ctx.month,
+    		year: ctx.year,
+    		start: ctx.start,
+    		end: ctx.end,
+    		canIncrementMonth: ctx.canIncrementMonth,
+    		canDecrementMonth: ctx.canDecrementMonth
+    	},
+    		$$inline: true
+    	});
+    	navbar.$on("monthSelected", ctx.monthSelected_handler);
+    	navbar.$on("incrementMonth", ctx.incrementMonth_handler);
+
+    	var each_value = dayDict;
+
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value.length; i += 1) {
+    		each_blocks[i] = create_each_block$7(get_each_context$7(ctx, each_value, i));
+    	}
+
+    	var month_1 = new Month({
+    		props: {
+    		visibleMonth: ctx.visibleMonth,
+    		selected: ctx.selected,
+    		highlighted: ctx.highlighted,
+    		shouldShakeDate: ctx.shouldShakeDate,
+    		start: ctx.start,
+    		end: ctx.end,
+    		id: ctx.visibleMonthId
+    	},
+    		$$inline: true
+    	});
+    	month_1.$on("dateSelected", ctx.dateSelected_handler);
+
+    	return {
+    		c: function create() {
+    			div0 = element("div");
+    			div2 = element("div");
+    			navbar.$$.fragment.c();
+    			t0 = space();
+    			div1 = element("div");
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t1 = space();
+    			month_1.$$.fragment.c();
+    			attr(div1, "class", "legend svelte-1kuaxoc");
+    			add_location(div1, file$f, 213, 8, 5781);
+    			attr(div2, "class", "calendar svelte-1kuaxoc");
+    			add_location(div2, file$f, 209, 6, 5550);
+    			attr(div0, "slot", "contents");
+    			attr(div0, "class", "svelte-1kuaxoc");
+    			add_location(div0, file$f, 208, 4, 5522);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div0, anchor);
+    			append(div0, div2);
+    			mount_component(navbar, div2, null);
+    			append(div2, t0);
+    			append(div2, div1);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div1, null);
+    			}
+
+    			append(div2, t1);
+    			mount_component(month_1, div2, null);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var navbar_changes = {};
+    			if (changed.month) navbar_changes.month = ctx.month;
+    			if (changed.year) navbar_changes.year = ctx.year;
+    			if (changed.start) navbar_changes.start = ctx.start;
+    			if (changed.end) navbar_changes.end = ctx.end;
+    			if (changed.canIncrementMonth) navbar_changes.canIncrementMonth = ctx.canIncrementMonth;
+    			if (changed.canDecrementMonth) navbar_changes.canDecrementMonth = ctx.canDecrementMonth;
+    			navbar.$set(navbar_changes);
+
+    			if (changed.dayDict) {
+    				each_value = dayDict;
+
+    				for (var i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context$7(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    					} else {
+    						each_blocks[i] = create_each_block$7(child_ctx);
+    						each_blocks[i].c();
+    						each_blocks[i].m(div1, null);
+    					}
+    				}
+
+    				for (; i < each_blocks.length; i += 1) {
+    					each_blocks[i].d(1);
+    				}
+    				each_blocks.length = each_value.length;
+    			}
+
+    			var month_1_changes = {};
+    			if (changed.visibleMonth) month_1_changes.visibleMonth = ctx.visibleMonth;
+    			if (changed.selected) month_1_changes.selected = ctx.selected;
+    			if (changed.highlighted) month_1_changes.highlighted = ctx.highlighted;
+    			if (changed.shouldShakeDate) month_1_changes.shouldShakeDate = ctx.shouldShakeDate;
+    			if (changed.start) month_1_changes.start = ctx.start;
+    			if (changed.end) month_1_changes.end = ctx.end;
+    			if (changed.visibleMonthId) month_1_changes.id = ctx.visibleMonthId;
+    			month_1.$set(month_1_changes);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(navbar.$$.fragment, local);
+
+    			transition_in(month_1.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(navbar.$$.fragment, local);
+    			transition_out(month_1.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div0);
+    			}
+
+    			destroy_component(navbar, );
+
+    			destroy_each(each_blocks, detaching);
+
+    			destroy_component(month_1, );
+    		}
+    	};
+    }
+
+    // (192:2) <Popover     bind:this="{popover}"     bind:open="{isOpen}"     bind:shrink="{isClosing}"     {trigger}     on:opened="{registerOpen}"     on:closed="{registerClose}"   >
+    function create_default_slot(ctx) {
+    	var t;
+
+    	return {
+    		c: function create() {
+    			t = space();
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: noop,
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    function create_fragment$i(ctx) {
+    	var div, updating_open, updating_shrink, current;
+
+    	function popover_1_open_binding(value) {
+    		ctx.popover_1_open_binding.call(null, value);
+    		updating_open = true;
+    		add_flush_callback(() => updating_open = false);
+    	}
+
+    	function popover_1_shrink_binding(value_1) {
+    		ctx.popover_1_shrink_binding.call(null, value_1);
+    		updating_shrink = true;
+    		add_flush_callback(() => updating_shrink = false);
+    	}
+
+    	let popover_1_props = {
+    		trigger: ctx.trigger,
+    		$$slots: {
+    		default: [create_default_slot],
+    		contents: [create_contents_slot],
+    		trigger: [create_trigger_slot]
+    	},
+    		$$scope: { ctx }
+    	};
+    	if (ctx.isOpen !== void 0) {
+    		popover_1_props.open = ctx.isOpen;
+    	}
+    	if (ctx.isClosing !== void 0) {
+    		popover_1_props.shrink = ctx.isClosing;
+    	}
+    	var popover_1 = new Popover({ props: popover_1_props, $$inline: true });
+
+    	ctx.popover_1_binding(popover_1);
+    	binding_callbacks.push(() => bind(popover_1, 'open', popover_1_open_binding));
+    	binding_callbacks.push(() => bind(popover_1, 'shrink', popover_1_shrink_binding));
+    	popover_1.$on("opened", ctx.registerOpen);
+    	popover_1.$on("closed", ctx.registerClose);
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			popover_1.$$.fragment.c();
+    			attr(div, "class", "datepicker svelte-1kuaxoc");
+    			toggle_class(div, "open", ctx.isOpen);
+    			toggle_class(div, "closing", ctx.isClosing);
+    			add_location(div, file$f, 190, 0, 5067);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			mount_component(popover_1, div, null);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var popover_1_changes = {};
+    			if (changed.trigger) popover_1_changes.trigger = ctx.trigger;
+    			if (changed.$$scope || changed.visibleMonth || changed.selected || changed.highlighted || changed.shouldShakeDate || changed.start || changed.end || changed.visibleMonthId || changed.month || changed.year || changed.canIncrementMonth || changed.canDecrementMonth || changed.trigger || changed.formattedSelected) popover_1_changes.$$scope = { changed, ctx };
+    			if (!updating_open && changed.isOpen) {
+    				popover_1_changes.open = ctx.isOpen;
+    			}
+    			if (!updating_shrink && changed.isClosing) {
+    				popover_1_changes.shrink = ctx.isClosing;
+    			}
+    			popover_1.$set(popover_1_changes);
+
+    			if (changed.isOpen) {
+    				toggle_class(div, "open", ctx.isOpen);
+    			}
+
+    			if (changed.isClosing) {
+    				toggle_class(div, "closing", ctx.isClosing);
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(popover_1.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(popover_1.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			ctx.popover_1_binding(null);
+
+    			destroy_component(popover_1, );
+    		}
+    	};
+    }
+
+    function getDay(m, date) {
+      for (let i = 0; i < m.weeks.length; i += 1) {
+        for (let j = 0; j < m.weeks[i].days.length; j += 1) {
+          if (areDatesEquivalent(m.weeks[i].days[j].date, date)) {
+            return m.weeks[i].days[j];
+          }
+        }
+      }
+      return null;
+    }
+
+    function instance$f($$self, $$props, $$invalidate) {
+    	
+
+      const dispatch = createEventDispatcher();
+      const today = new Date();
+
+      let popover;
+
+      let { format = '#{m}/#{d}/#{Y}', start = new Date(1987, 9, 29), end = new Date(2020, 9, 29), selected = today, dateChosen = false, trigger = null, selectableCallback = null } = $$props;
+
+      let highlighted = today;
+      let shouldShakeDate = false;
+      let shakeHighlightTimeout;
+      let month = today.getMonth();
+      let year = today.getFullYear();
+
+      let isOpen = false;
+      let isClosing = false;
+
+      today.setHours(0, 0, 0, 0);
+
+      function assignmentHandler(formatted) {
+        if (!trigger) return;
+        trigger.innerHTML = formatted; $$invalidate('trigger', trigger);
+      }
+
+      let monthIndex = 0;
+
+      let { formattedSelected } = $$props;
+
+      onMount(() => {
+        $$invalidate('month', month = selected.getMonth());
+        $$invalidate('year', year = selected.getFullYear());
+      });
+
+      function changeMonth(selectedMonth) {
+        $$invalidate('month', month = selectedMonth);
+      }
+
+      function incrementMonth(direction, date) {
+        if (direction === 1 && !canIncrementMonth) return;
+        if (direction === -1 && !canDecrementMonth) return;
+        let current = new Date(year, month, 1);
+        current.setMonth(current.getMonth() + direction);
+        $$invalidate('month', month = current.getMonth());
+        $$invalidate('year', year = current.getFullYear());
+        $$invalidate('highlighted', highlighted = new Date(year, month, date || 1));
+      }
+
+      function getDefaultHighlighted() {
+        return new Date(selected);
+      }
+
+      function incrementDayHighlighted(amount) {
+        $$invalidate('highlighted', highlighted = new Date(highlighted));
+        highlighted.setDate(highlighted.getDate() + amount);
+        if (amount > 0 && highlighted > lastVisibleDate) {
+          return incrementMonth(1, highlighted.getDate());
+        }
+        if (amount < 0 && highlighted < firstVisibleDate) {
+          return incrementMonth(-1, highlighted.getDate());
+        }
+        return highlighted;
+      }
+
+      function checkIfVisibleDateIsSelectable(date) {
+        const day = getDay(visibleMonth, date);
+        if (!day) return false;
+        return day.selectable;
+      }
+
+      function shakeDate(date) {
+        clearTimeout(shakeHighlightTimeout);
+        $$invalidate('shouldShakeDate', shouldShakeDate = date);
+        shakeHighlightTimeout = setTimeout(() => {
+          $$invalidate('shouldShakeDate', shouldShakeDate = false);
+        }, 700);
+      }
+
+      function assignValueToTrigger(formatted) {
+        assignmentHandler(formatted);
+      }
+
+      function registerSelection(chosen) {
+        if (!checkIfVisibleDateIsSelectable(chosen)) return shakeDate(chosen);
+        // eslint-disable-next-line
+        close();
+        $$invalidate('selected', selected = chosen);
+        $$invalidate('dateChosen', dateChosen = true);
+        assignValueToTrigger(formattedSelected);
+        return dispatch('dateSelected', { date: chosen });
+      }
+
+      function handleKeyPress(evt) {
+        if (keyCodesArray.indexOf(evt.keyCode) === -1) return;
+        evt.preventDefault();
+        switch (evt.keyCode) {
+          case keyCodes.left:
+            incrementDayHighlighted(-1);
+            break;
+          case keyCodes.up:
+            incrementDayHighlighted(-7);
+            break;
+          case keyCodes.right:
+            incrementDayHighlighted(1);
+            break;
+          case keyCodes.down:
+            incrementDayHighlighted(7);
+            break;
+          case keyCodes.pgup:
+            incrementMonth(-1);
+            break;
+          case keyCodes.pgdown:
+            incrementMonth(1);
+            break;
+          case keyCodes.escape:
+            // eslint-disable-next-line
+            close();
+            break;
+          case keyCodes.enter:
+            registerSelection(highlighted);
+            break;
+          default:
+            break;
+        }
+      }
+
+      function registerClose() {
+        document.removeEventListener('keydown', handleKeyPress);
+        dispatch('close');
+      }
+
+      function close() {
+        popover.close();
+        registerClose();
+      }
+
+      function registerOpen() {
+        $$invalidate('highlighted', highlighted = getDefaultHighlighted());
+        $$invalidate('month', month = selected.getMonth());
+        $$invalidate('year', year = selected.getFullYear());
+        document.addEventListener('keydown', handleKeyPress);
+        dispatch('open');
+      }
+
+    	const writable_props = ['format', 'start', 'end', 'selected', 'dateChosen', 'trigger', 'selectableCallback', 'formattedSelected'];
+    	Object.keys($$props).forEach(key => {
+    		if (!writable_props.includes(key) && !key.startsWith('$$')) console.warn(`<Datepicker> was created with unknown prop '${key}'`);
+    	});
+
+    	let { $$slots = {}, $$scope } = $$props;
+
+    	function monthSelected_handler(e) {
+    		return changeMonth(e.detail);
+    	}
+
+    	function incrementMonth_handler(e) {
+    		return incrementMonth(e.detail);
+    	}
+
+    	function dateSelected_handler(e) {
+    		return registerSelection(e.detail);
+    	}
+
+    	function popover_1_binding($$value) {
+    		binding_callbacks[$$value ? 'unshift' : 'push'](() => {
+    			$$invalidate('popover', popover = $$value);
+    		});
+    	}
+
+    	function popover_1_open_binding(value) {
+    		isOpen = value;
+    		$$invalidate('isOpen', isOpen);
+    	}
+
+    	function popover_1_shrink_binding(value_1) {
+    		isClosing = value_1;
+    		$$invalidate('isClosing', isClosing);
+    	}
+
+    	$$self.$set = $$props => {
+    		if ('format' in $$props) $$invalidate('format', format = $$props.format);
+    		if ('start' in $$props) $$invalidate('start', start = $$props.start);
+    		if ('end' in $$props) $$invalidate('end', end = $$props.end);
+    		if ('selected' in $$props) $$invalidate('selected', selected = $$props.selected);
+    		if ('dateChosen' in $$props) $$invalidate('dateChosen', dateChosen = $$props.dateChosen);
+    		if ('trigger' in $$props) $$invalidate('trigger', trigger = $$props.trigger);
+    		if ('selectableCallback' in $$props) $$invalidate('selectableCallback', selectableCallback = $$props.selectableCallback);
+    		if ('formattedSelected' in $$props) $$invalidate('formattedSelected', formattedSelected = $$props.formattedSelected);
+    		if ('$$scope' in $$props) $$invalidate('$$scope', $$scope = $$props.$$scope);
+    	};
+
+    	let months, visibleMonth, visibleMonthId, lastVisibleDate, firstVisibleDate, canIncrementMonth, canDecrementMonth;
+
+    	$$self.$$.update = ($$dirty = { start: 1, end: 1, selectableCallback: 1, months: 1, month: 1, year: 1, monthIndex: 1, visibleMonth: 1, selected: 1, format: 1 }) => {
+    		if ($$dirty.start || $$dirty.end || $$dirty.selectableCallback) { $$invalidate('months', months = getMonths(start, end, selectableCallback)); }
+    		if ($$dirty.months || $$dirty.month || $$dirty.year) { {
+            $$invalidate('monthIndex', monthIndex = 0);
+            for (let i = 0; i < months.length; i += 1) {
+              if (months[i].month === month && months[i].year === year) {
+                $$invalidate('monthIndex', monthIndex = i);
+              }
+            }
+          } }
+    		if ($$dirty.months || $$dirty.monthIndex) { $$invalidate('visibleMonth', visibleMonth = months[monthIndex]); }
+    		if ($$dirty.year || $$dirty.month) { $$invalidate('visibleMonthId', visibleMonthId = year + month / 100); }
+    		if ($$dirty.visibleMonth) { lastVisibleDate = visibleMonth.weeks[visibleMonth.weeks.length - 1].days[6].date; }
+    		if ($$dirty.visibleMonth) { firstVisibleDate = visibleMonth.weeks[0].days[0].date; }
+    		if ($$dirty.monthIndex || $$dirty.months) { $$invalidate('canIncrementMonth', canIncrementMonth = monthIndex < months.length - 1); }
+    		if ($$dirty.monthIndex) { $$invalidate('canDecrementMonth', canDecrementMonth = monthIndex > 0); }
+    		if ($$dirty.selected || $$dirty.format) { {
+            $$invalidate('formattedSelected', formattedSelected = formatDate(selected, format));
+          } }
+    	};
+
+    	return {
+    		popover,
+    		format,
+    		start,
+    		end,
+    		selected,
+    		dateChosen,
+    		trigger,
+    		selectableCallback,
+    		highlighted,
+    		shouldShakeDate,
+    		month,
+    		year,
+    		isOpen,
+    		isClosing,
+    		formattedSelected,
+    		changeMonth,
+    		incrementMonth,
+    		registerSelection,
+    		registerClose,
+    		registerOpen,
+    		visibleMonth,
+    		visibleMonthId,
+    		canIncrementMonth,
+    		canDecrementMonth,
+    		monthSelected_handler,
+    		incrementMonth_handler,
+    		dateSelected_handler,
+    		popover_1_binding,
+    		popover_1_open_binding,
+    		popover_1_shrink_binding,
+    		$$slots,
+    		$$scope
+    	};
+    }
+
+    class Datepicker extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$f, create_fragment$i, safe_not_equal, ["format", "start", "end", "selected", "dateChosen", "trigger", "selectableCallback", "formattedSelected"]);
+
+    		const { ctx } = this.$$;
+    		const props = options.props || {};
+    		if (ctx.formattedSelected === undefined && !('formattedSelected' in props)) {
+    			console.warn("<Datepicker> was created without expected prop 'formattedSelected'");
+    		}
+    	}
+
+    	get format() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set format(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get start() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set start(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get end() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set end(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get selected() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set selected(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get dateChosen() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set dateChosen(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get trigger() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set trigger(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get selectableCallback() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set selectableCallback(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	get formattedSelected() {
+    		throw new Error("<Datepicker>: Props cannot be read directly from the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+
+    	set formattedSelected(value) {
+    		throw new Error("<Datepicker>: Props cannot be set directly on the component instance unless compiling with 'accessors: true' or '<svelte:options accessors/>'");
+    	}
+    }
+
+    /* src\dashboard\PostShift.svelte generated by Svelte v3.6.7 */
+
+    const file$g = "src\\dashboard\\PostShift.svelte";
+
+    function get_each_context$8(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    function get_each_context_1$1(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    function get_each_context_2$1(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    function get_each_context_3(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    function get_each_context_4(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.choice = list[i];
+    	return child_ctx;
+    }
+
+    // (238:4) {:else}
+    function create_else_block_4(ctx) {
+    	var div, h5;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			h5 = element("h5");
+    			h5.textContent = "You are not a member of any company yet, please request an invite from\r\n          your company's admin to start swapping shifts with your colleagues.";
+    			add_location(h5, file$g, 239, 8, 7173);
+    			add_location(div, file$g, 238, 6, 7158);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, h5);
+    		},
+
+    		p: noop,
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+    		}
+    	};
+    }
+
+    // (123:4) {#if $connections.length > 0}
+    function create_if_block$4(ctx) {
+    	var div5, form, div0, h50, t1, updating_formattedSelected, updating_dateChosen, t2, select0, t3, select1, t4, div1, h51, t6, updating_formattedSelected_1, updating_dateChosen_1, t7, select2, t8, select3, t9, div2, h52, t11, textarea, t12, div3, h53, t14, select4, option, t16, div4, button, current, dispose;
+
+    	function datepicker0_formattedSelected_binding(value) {
+    		ctx.datepicker0_formattedSelected_binding.call(null, value);
+    		updating_formattedSelected = true;
+    		add_flush_callback(() => updating_formattedSelected = false);
+    	}
+
+    	function datepicker0_dateChosen_binding(value_1) {
+    		ctx.datepicker0_dateChosen_binding.call(null, value_1);
+    		updating_dateChosen = true;
+    		add_flush_callback(() => updating_dateChosen = false);
+    	}
+
+    	let datepicker0_props = {
+    		format: dateFormat$2,
+    		start: ctx.fromCalendarStartDate,
+    		$$slots: { default: [create_default_slot_1] },
+    		$$scope: { ctx }
+    	};
+    	if (ctx.fromDate !== void 0) {
+    		datepicker0_props.formattedSelected = ctx.fromDate;
+    	}
+    	if (ctx.fromDateChosen !== void 0) {
+    		datepicker0_props.dateChosen = ctx.fromDateChosen;
+    	}
+    	var datepicker0 = new Datepicker({ props: datepicker0_props, $$inline: true });
+
+    	binding_callbacks.push(() => bind(datepicker0, 'formattedSelected', datepicker0_formattedSelected_binding));
+    	binding_callbacks.push(() => bind(datepicker0, 'dateChosen', datepicker0_dateChosen_binding));
+    	datepicker0.$on("open", ctx.open_handler);
+    	datepicker0.$on("close", ctx.close_handler);
+
+    	var each_value_4 = ctx.hourList;
+
+    	var each_blocks_4 = [];
+
+    	for (var i_1 = 0; i_1 < each_value_4.length; i_1 += 1) {
+    		each_blocks_4[i_1] = create_each_block_4(get_each_context_4(ctx, each_value_4, i_1));
+    	}
+
+    	var each_value_3 = ctx.minuteList;
+
+    	var each_blocks_3 = [];
+
+    	for (var i_1 = 0; i_1 < each_value_3.length; i_1 += 1) {
+    		each_blocks_3[i_1] = create_each_block_3(get_each_context_3(ctx, each_value_3, i_1));
+    	}
+
+    	function datepicker1_formattedSelected_binding(value_2) {
+    		ctx.datepicker1_formattedSelected_binding.call(null, value_2);
+    		updating_formattedSelected_1 = true;
+    		add_flush_callback(() => updating_formattedSelected_1 = false);
+    	}
+
+    	function datepicker1_dateChosen_binding(value_3) {
+    		ctx.datepicker1_dateChosen_binding.call(null, value_3);
+    		updating_dateChosen_1 = true;
+    		add_flush_callback(() => updating_dateChosen_1 = false);
+    	}
+
+    	let datepicker1_props = {
+    		format: dateFormat$2,
+    		start: ctx.toCalendarStartDate,
+    		$$slots: { default: [create_default_slot$1] },
+    		$$scope: { ctx }
+    	};
+    	if (ctx.toDate !== void 0) {
+    		datepicker1_props.formattedSelected = ctx.toDate;
+    	}
+    	if (ctx.toDateChosen !== void 0) {
+    		datepicker1_props.dateChosen = ctx.toDateChosen;
+    	}
+    	var datepicker1 = new Datepicker({ props: datepicker1_props, $$inline: true });
+
+    	binding_callbacks.push(() => bind(datepicker1, 'formattedSelected', datepicker1_formattedSelected_binding));
+    	binding_callbacks.push(() => bind(datepicker1, 'dateChosen', datepicker1_dateChosen_binding));
+
+    	var each_value_2 = ctx.hourList;
+
+    	var each_blocks_2 = [];
+
+    	for (var i_1 = 0; i_1 < each_value_2.length; i_1 += 1) {
+    		each_blocks_2[i_1] = create_each_block_2$1(get_each_context_2$1(ctx, each_value_2, i_1));
+    	}
+
+    	var each_value_1 = ctx.minuteList;
+
+    	var each_blocks_1 = [];
+
+    	for (var i_1 = 0; i_1 < each_value_1.length; i_1 += 1) {
+    		each_blocks_1[i_1] = create_each_block_1$1(get_each_context_1$1(ctx, each_value_1, i_1));
+    	}
+
+    	var each_value = ctx.$connections;
+
+    	var each_blocks = [];
+
+    	for (var i_1 = 0; i_1 < each_value.length; i_1 += 1) {
+    		each_blocks[i_1] = create_each_block$8(get_each_context$8(ctx, each_value, i_1));
+    	}
+
+    	return {
+    		c: function create() {
+    			div5 = element("div");
+    			form = element("form");
+    			div0 = element("div");
+    			h50 = element("h5");
+    			h50.textContent = "From :";
+    			t1 = space();
+    			datepicker0.$$.fragment.c();
+    			t2 = space();
+    			select0 = element("select");
+
+    			for (var i_1 = 0; i_1 < each_blocks_4.length; i_1 += 1) {
+    				each_blocks_4[i_1].c();
+    			}
+
+    			t3 = space();
+    			select1 = element("select");
+
+    			for (var i_1 = 0; i_1 < each_blocks_3.length; i_1 += 1) {
+    				each_blocks_3[i_1].c();
+    			}
+
+    			t4 = space();
+    			div1 = element("div");
+    			h51 = element("h5");
+    			h51.textContent = "To :";
+    			t6 = space();
+    			datepicker1.$$.fragment.c();
+    			t7 = space();
+    			select2 = element("select");
+
+    			for (var i_1 = 0; i_1 < each_blocks_2.length; i_1 += 1) {
+    				each_blocks_2[i_1].c();
+    			}
+
+    			t8 = space();
+    			select3 = element("select");
+
+    			for (var i_1 = 0; i_1 < each_blocks_1.length; i_1 += 1) {
+    				each_blocks_1[i_1].c();
+    			}
+
+    			t9 = space();
+    			div2 = element("div");
+    			h52 = element("h5");
+    			h52.textContent = "Note :";
+    			t11 = space();
+    			textarea = element("textarea");
+    			t12 = space();
+    			div3 = element("div");
+    			h53 = element("h5");
+    			h53.textContent = "Company :";
+    			t14 = space();
+    			select4 = element("select");
+    			option = element("option");
+    			option.textContent = "Select Company to post shift on\r\n              ";
+
+    			for (var i_1 = 0; i_1 < each_blocks.length; i_1 += 1) {
+    				each_blocks[i_1].c();
+    			}
+
+    			t16 = space();
+    			div4 = element("div");
+    			button = element("button");
+    			button.textContent = "Post Shift";
+    			add_location(h50, file$g, 126, 12, 3305);
+    			if (ctx.fromHour === void 0) add_render_callback(() => ctx.select0_change_handler.call(select0));
+    			attr(select0, "aria-describedby", "inputGroupSelect01");
+    			attr(select0, "class", "custom-select time-field svelte-1pvagza");
+    			add_location(select0, file$g, 146, 12, 3954);
+    			if (ctx.fromMinute === void 0) add_render_callback(() => ctx.select1_change_handler.call(select1));
+    			attr(select1, "aria-describedby", "inputGroupSelect01");
+    			attr(select1, "class", "custom-select time-field svelte-1pvagza");
+    			add_location(select1, file$g, 156, 12, 4336);
+    			attr(div0, "class", "");
+    			add_location(div0, file$g, 125, 10, 3277);
+    			add_location(h51, file$g, 168, 12, 4766);
+    			if (ctx.toHour === void 0) add_render_callback(() => ctx.select2_change_handler.call(select2));
+    			attr(select2, "aria-describedby", "inputGroupSelect01");
+    			attr(select2, "class", "custom-select time-field svelte-1pvagza");
+    			add_location(select2, file$g, 183, 12, 5292);
+    			if (ctx.toMinute === void 0) add_render_callback(() => ctx.select3_change_handler.call(select3));
+    			attr(select3, "aria-describedby", "inputGroupSelect01");
+    			attr(select3, "class", "custom-select time-field svelte-1pvagza");
+    			add_location(select3, file$g, 193, 12, 5672);
+    			attr(div1, "class", "");
+    			add_location(div1, file$g, 167, 10, 4738);
+    			add_location(h52, file$g, 205, 12, 6100);
+    			attr(textarea, "class", "form-control");
+    			attr(textarea, "name", "note");
+    			attr(textarea, "id", "note");
+    			attr(textarea, "cols", "");
+    			attr(textarea, "rows", "");
+    			attr(textarea, "placeholder", "Enter a short note about this shift");
+    			add_location(textarea, file$g, 206, 12, 6129);
+    			attr(div2, "class", "");
+    			add_location(div2, file$g, 204, 10, 6072);
+    			add_location(h53, file$g, 216, 12, 6435);
+    			option.__value = "";
+    			option.value = option.__value;
+    			option.selected = true;
+    			option.disabled = true;
+    			option.hidden = true;
+    			add_location(option, file$g, 218, 14, 6542);
+    			if (ctx.selectedCompany === void 0) add_render_callback(() => ctx.select4_change_handler.call(select4));
+    			attr(select4, "class", "custom-select");
+    			add_location(select4, file$g, 217, 12, 6467);
+    			attr(div3, "class", "mb-3");
+    			add_location(div3, file$g, 215, 10, 6403);
+    			attr(button, "type", "submit");
+    			attr(button, "class", "btn btn-primary form-control postShift-btn svelte-1pvagza");
+    			add_location(button, file$g, 229, 12, 6936);
+    			attr(div4, "class", "");
+    			add_location(div4, file$g, 228, 10, 6908);
+    			attr(form, "class", "");
+    			add_location(form, file$g, 124, 8, 3210);
+    			attr(div5, "class", "jumbotron svelte-1pvagza");
+    			add_location(div5, file$g, 123, 6, 3177);
+
+    			dispose = [
+    				listen(select0, "change", ctx.select0_change_handler),
+    				listen(select1, "change", ctx.select1_change_handler),
+    				listen(select2, "change", ctx.select2_change_handler),
+    				listen(select3, "change", ctx.select3_change_handler),
+    				listen(textarea, "input", ctx.textarea_input_handler),
+    				listen(select4, "change", ctx.select4_change_handler),
+    				listen(form, "submit", prevent_default(ctx.handleSubmit))
+    			];
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div5, anchor);
+    			append(div5, form);
+    			append(form, div0);
+    			append(div0, h50);
+    			append(div0, t1);
+    			mount_component(datepicker0, div0, null);
+    			append(div0, t2);
+    			append(div0, select0);
+
+    			for (var i_1 = 0; i_1 < each_blocks_4.length; i_1 += 1) {
+    				each_blocks_4[i_1].m(select0, null);
+    			}
+
+    			select_option(select0, ctx.fromHour);
+
+    			append(div0, t3);
+    			append(div0, select1);
+
+    			for (var i_1 = 0; i_1 < each_blocks_3.length; i_1 += 1) {
+    				each_blocks_3[i_1].m(select1, null);
+    			}
+
+    			select_option(select1, ctx.fromMinute);
+
+    			append(form, t4);
+    			append(form, div1);
+    			append(div1, h51);
+    			append(div1, t6);
+    			mount_component(datepicker1, div1, null);
+    			append(div1, t7);
+    			append(div1, select2);
+
+    			for (var i_1 = 0; i_1 < each_blocks_2.length; i_1 += 1) {
+    				each_blocks_2[i_1].m(select2, null);
+    			}
+
+    			select_option(select2, ctx.toHour);
+
+    			append(div1, t8);
+    			append(div1, select3);
+
+    			for (var i_1 = 0; i_1 < each_blocks_1.length; i_1 += 1) {
+    				each_blocks_1[i_1].m(select3, null);
+    			}
+
+    			select_option(select3, ctx.toMinute);
+
+    			append(form, t9);
+    			append(form, div2);
+    			append(div2, h52);
+    			append(div2, t11);
+    			append(div2, textarea);
+
+    			textarea.value = ctx.note;
+
+    			append(form, t12);
+    			append(form, div3);
+    			append(div3, h53);
+    			append(div3, t14);
+    			append(div3, select4);
+    			append(select4, option);
+
+    			for (var i_1 = 0; i_1 < each_blocks.length; i_1 += 1) {
+    				each_blocks[i_1].m(select4, null);
+    			}
+
+    			select_option(select4, ctx.selectedCompany);
+
+    			append(form, t16);
+    			append(form, div4);
+    			append(div4, button);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var datepicker0_changes = {};
+    			if (changed.dateFormat) datepicker0_changes.format = dateFormat$2;
+    			if (changed.fromCalendarStartDate) datepicker0_changes.start = ctx.fromCalendarStartDate;
+    			if (changed.$$scope || changed.fromDate) datepicker0_changes.$$scope = { changed, ctx };
+    			if (!updating_formattedSelected && changed.fromDate) {
+    				datepicker0_changes.formattedSelected = ctx.fromDate;
+    			}
+    			if (!updating_dateChosen && changed.fromDateChosen) {
+    				datepicker0_changes.dateChosen = ctx.fromDateChosen;
+    			}
+    			datepicker0.$set(datepicker0_changes);
+
+    			if (changed.hourList) {
+    				each_value_4 = ctx.hourList;
+
+    				for (var i_1 = 0; i_1 < each_value_4.length; i_1 += 1) {
+    					const child_ctx = get_each_context_4(ctx, each_value_4, i_1);
+
+    					if (each_blocks_4[i_1]) {
+    						each_blocks_4[i_1].p(changed, child_ctx);
+    					} else {
+    						each_blocks_4[i_1] = create_each_block_4(child_ctx);
+    						each_blocks_4[i_1].c();
+    						each_blocks_4[i_1].m(select0, null);
+    					}
+    				}
+
+    				for (; i_1 < each_blocks_4.length; i_1 += 1) {
+    					each_blocks_4[i_1].d(1);
+    				}
+    				each_blocks_4.length = each_value_4.length;
+    			}
+
+    			if (changed.fromHour) select_option(select0, ctx.fromHour);
+
+    			if (changed.minuteList) {
+    				each_value_3 = ctx.minuteList;
+
+    				for (var i_1 = 0; i_1 < each_value_3.length; i_1 += 1) {
+    					const child_ctx = get_each_context_3(ctx, each_value_3, i_1);
+
+    					if (each_blocks_3[i_1]) {
+    						each_blocks_3[i_1].p(changed, child_ctx);
+    					} else {
+    						each_blocks_3[i_1] = create_each_block_3(child_ctx);
+    						each_blocks_3[i_1].c();
+    						each_blocks_3[i_1].m(select1, null);
+    					}
+    				}
+
+    				for (; i_1 < each_blocks_3.length; i_1 += 1) {
+    					each_blocks_3[i_1].d(1);
+    				}
+    				each_blocks_3.length = each_value_3.length;
+    			}
+
+    			if (changed.fromMinute) select_option(select1, ctx.fromMinute);
+
+    			var datepicker1_changes = {};
+    			if (changed.dateFormat) datepicker1_changes.format = dateFormat$2;
+    			if (changed.toCalendarStartDate) datepicker1_changes.start = ctx.toCalendarStartDate;
+    			if (changed.$$scope || changed.fromClicked || changed.toDate) datepicker1_changes.$$scope = { changed, ctx };
+    			if (!updating_formattedSelected_1 && changed.toDate) {
+    				datepicker1_changes.formattedSelected = ctx.toDate;
+    			}
+    			if (!updating_dateChosen_1 && changed.toDateChosen) {
+    				datepicker1_changes.dateChosen = ctx.toDateChosen;
+    			}
+    			datepicker1.$set(datepicker1_changes);
+
+    			if (changed.hourList) {
+    				each_value_2 = ctx.hourList;
+
+    				for (var i_1 = 0; i_1 < each_value_2.length; i_1 += 1) {
+    					const child_ctx = get_each_context_2$1(ctx, each_value_2, i_1);
+
+    					if (each_blocks_2[i_1]) {
+    						each_blocks_2[i_1].p(changed, child_ctx);
+    					} else {
+    						each_blocks_2[i_1] = create_each_block_2$1(child_ctx);
+    						each_blocks_2[i_1].c();
+    						each_blocks_2[i_1].m(select2, null);
+    					}
+    				}
+
+    				for (; i_1 < each_blocks_2.length; i_1 += 1) {
+    					each_blocks_2[i_1].d(1);
+    				}
+    				each_blocks_2.length = each_value_2.length;
+    			}
+
+    			if (changed.toHour) select_option(select2, ctx.toHour);
+
+    			if (changed.minuteList) {
+    				each_value_1 = ctx.minuteList;
+
+    				for (var i_1 = 0; i_1 < each_value_1.length; i_1 += 1) {
+    					const child_ctx = get_each_context_1$1(ctx, each_value_1, i_1);
+
+    					if (each_blocks_1[i_1]) {
+    						each_blocks_1[i_1].p(changed, child_ctx);
+    					} else {
+    						each_blocks_1[i_1] = create_each_block_1$1(child_ctx);
+    						each_blocks_1[i_1].c();
+    						each_blocks_1[i_1].m(select3, null);
+    					}
+    				}
+
+    				for (; i_1 < each_blocks_1.length; i_1 += 1) {
+    					each_blocks_1[i_1].d(1);
+    				}
+    				each_blocks_1.length = each_value_1.length;
+    			}
+
+    			if (changed.toMinute) select_option(select3, ctx.toMinute);
+    			if (changed.note) textarea.value = ctx.note;
+
+    			if (changed.$connections) {
+    				each_value = ctx.$connections;
+
+    				for (var i_1 = 0; i_1 < each_value.length; i_1 += 1) {
+    					const child_ctx = get_each_context$8(ctx, each_value, i_1);
+
+    					if (each_blocks[i_1]) {
+    						each_blocks[i_1].p(changed, child_ctx);
+    					} else {
+    						each_blocks[i_1] = create_each_block$8(child_ctx);
+    						each_blocks[i_1].c();
+    						each_blocks[i_1].m(select4, null);
+    					}
+    				}
+
+    				for (; i_1 < each_blocks.length; i_1 += 1) {
+    					each_blocks[i_1].d(1);
+    				}
+    				each_blocks.length = each_value.length;
+    			}
+
+    			if (changed.selectedCompany) select_option(select4, ctx.selectedCompany);
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(datepicker0.$$.fragment, local);
+
+    			transition_in(datepicker1.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(datepicker0.$$.fragment, local);
+    			transition_out(datepicker1.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div5);
+    			}
+
+    			destroy_component(datepicker0, );
+
+    			destroy_each(each_blocks_4, detaching);
+
+    			destroy_each(each_blocks_3, detaching);
+
+    			destroy_component(datepicker1, );
+
+    			destroy_each(each_blocks_2, detaching);
+
+    			destroy_each(each_blocks_1, detaching);
+
+    			destroy_each(each_blocks, detaching);
+
+    			run_all(dispose);
+    		}
+    	};
+    }
+
+    // (128:12) <Datepicker                format={dateFormat}                start={fromCalendarStartDate}                bind:formattedSelected={fromDate}                bind:dateChosen={fromDateChosen}                on:open={() => {                  fromClicked = true;                }}                on:close={() => {                  fromClicked = false;                }}>
+    function create_default_slot_1(ctx) {
+    	var input;
+
+    	return {
+    		c: function create() {
+    			input = element("input");
+    			attr(input, "type", "text");
+    			attr(input, "class", "form-control date-field svelte-1pvagza");
+    			input.value = ctx.fromDate;
+    			input.readOnly = true;
+    			attr(input, "placeholder", "Pick a start date");
+    			add_location(input, file$g, 138, 14, 3715);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, input, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.fromDate) {
+    				input.value = ctx.fromDate;
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(input);
+    			}
+    		}
+    	};
+    }
+
+    // (153:44) {:else}
+    function create_else_block_3(ctx) {
+    	var t_value = ctx.choice, t;
+
+    	return {
+    		c: function create() {
+    			t = text(t_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.hourList) && t_value !== (t_value = ctx.choice)) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (153:18) {#if choice < 10}
+    function create_if_block_5$1(ctx) {
+    	var t0, t1_value = ctx.choice, t1;
+
+    	return {
+    		c: function create() {
+    			t0 = text("0");
+    			t1 = text(t1_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t0, anchor);
+    			insert(target, t1, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.hourList) && t1_value !== (t1_value = ctx.choice)) {
+    				set_data(t1, t1_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t0);
+    				detach(t1);
+    			}
+    		}
+    	};
+    }
+
+    // (151:14) {#each hourList as choice}
+    function create_each_block_4(ctx) {
+    	var option, t, option_value_value;
+
+    	function select_block_type_1(ctx) {
+    		if (ctx.choice < 10) return create_if_block_5$1;
+    		return create_else_block_3;
+    	}
+
+    	var current_block_type = select_block_type_1(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			if_block.c();
+    			t = space();
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$g, 151, 16, 4160);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			if_block.m(option, null);
+    			append(option, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_1(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(option, t);
+    				}
+    			}
+
+    			if ((changed.hourList) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+
+    			if_block.d();
+    		}
+    	};
+    }
+
+    // (163:44) {:else}
+    function create_else_block_2$1(ctx) {
+    	var t_value = ctx.choice, t;
+
+    	return {
+    		c: function create() {
+    			t = text(t_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.minuteList) && t_value !== (t_value = ctx.choice)) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (163:18) {#if choice < 10}
+    function create_if_block_4$1(ctx) {
+    	var t0, t1_value = ctx.choice, t1;
+
+    	return {
+    		c: function create() {
+    			t0 = text("0");
+    			t1 = text(t1_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t0, anchor);
+    			insert(target, t1, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.minuteList) && t1_value !== (t1_value = ctx.choice)) {
+    				set_data(t1, t1_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t0);
+    				detach(t1);
+    			}
+    		}
+    	};
+    }
+
+    // (161:14) {#each minuteList as choice}
+    function create_each_block_3(ctx) {
+    	var option, t, option_value_value;
+
+    	function select_block_type_2(ctx) {
+    		if (ctx.choice < 10) return create_if_block_4$1;
+    		return create_else_block_2$1;
+    	}
+
+    	var current_block_type = select_block_type_2(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			if_block.c();
+    			t = space();
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$g, 161, 16, 4546);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			if_block.m(option, null);
+    			append(option, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_2(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(option, t);
+    				}
+    			}
+
+    			if ((changed.minuteList) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+
+    			if_block.d();
+    		}
+    	};
+    }
+
+    // (175:14) {#if !fromClicked}
+    function create_if_block_3$1(ctx) {
+    	var input;
+
+    	return {
+    		c: function create() {
+    			input = element("input");
+    			attr(input, "type", "text");
+    			attr(input, "class", "form-control date-field svelte-1pvagza");
+    			input.value = ctx.toDate;
+    			input.readOnly = true;
+    			attr(input, "placeholder", "Pick a end date");
+    			add_location(input, file$g, 175, 16, 5028);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, input, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.toDate) {
+    				input.value = ctx.toDate;
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(input);
+    			}
+    		}
+    	};
+    }
+
+    // (170:12) <Datepicker                format={dateFormat}                start={toCalendarStartDate}                bind:formattedSelected={toDate}                bind:dateChosen={toDateChosen}>
+    function create_default_slot$1(ctx) {
+    	var if_block_anchor;
+
+    	var if_block = (!ctx.fromClicked) && create_if_block_3$1(ctx);
+
+    	return {
+    		c: function create() {
+    			if (if_block) if_block.c();
+    			if_block_anchor = empty();
+    		},
+
+    		m: function mount(target, anchor) {
+    			if (if_block) if_block.m(target, anchor);
+    			insert(target, if_block_anchor, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (!ctx.fromClicked) {
+    				if (if_block) {
+    					if_block.p(changed, ctx);
+    				} else {
+    					if_block = create_if_block_3$1(ctx);
+    					if_block.c();
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			} else if (if_block) {
+    				if_block.d(1);
+    				if_block = null;
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (if_block) if_block.d(detaching);
+
+    			if (detaching) {
+    				detach(if_block_anchor);
+    			}
+    		}
+    	};
+    }
+
+    // (190:44) {:else}
+    function create_else_block_1$1(ctx) {
+    	var t_value = ctx.choice, t;
+
+    	return {
+    		c: function create() {
+    			t = text(t_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.hourList) && t_value !== (t_value = ctx.choice)) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (190:18) {#if choice < 10}
+    function create_if_block_2$1(ctx) {
+    	var t0, t1_value = ctx.choice, t1;
+
+    	return {
+    		c: function create() {
+    			t0 = text("0");
+    			t1 = text(t1_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t0, anchor);
+    			insert(target, t1, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.hourList) && t1_value !== (t1_value = ctx.choice)) {
+    				set_data(t1, t1_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t0);
+    				detach(t1);
+    			}
+    		}
+    	};
+    }
+
+    // (188:14) {#each hourList as choice}
+    function create_each_block_2$1(ctx) {
+    	var option, t, option_value_value;
+
+    	function select_block_type_3(ctx) {
+    		if (ctx.choice < 10) return create_if_block_2$1;
+    		return create_else_block_1$1;
+    	}
+
+    	var current_block_type = select_block_type_3(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			if_block.c();
+    			t = space();
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$g, 188, 16, 5496);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			if_block.m(option, null);
+    			append(option, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_3(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(option, t);
+    				}
+    			}
+
+    			if ((changed.hourList) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+
+    			if_block.d();
+    		}
+    	};
+    }
+
+    // (200:44) {:else}
+    function create_else_block$3(ctx) {
+    	var t_value = ctx.choice, t;
+
+    	return {
+    		c: function create() {
+    			t = text(t_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.minuteList) && t_value !== (t_value = ctx.choice)) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (200:18) {#if choice < 10}
+    function create_if_block_1$1(ctx) {
+    	var t0, t1_value = ctx.choice, t1;
+
+    	return {
+    		c: function create() {
+    			t0 = text("0");
+    			t1 = text(t1_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t0, anchor);
+    			insert(target, t1, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.minuteList) && t1_value !== (t1_value = ctx.choice)) {
+    				set_data(t1, t1_value);
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t0);
+    				detach(t1);
+    			}
+    		}
+    	};
+    }
+
+    // (198:14) {#each minuteList as choice}
+    function create_each_block_1$1(ctx) {
+    	var option, t, option_value_value;
+
+    	function select_block_type_4(ctx) {
+    		if (ctx.choice < 10) return create_if_block_1$1;
+    		return create_else_block$3;
+    	}
+
+    	var current_block_type = select_block_type_4(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			if_block.c();
+    			t = space();
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$g, 198, 16, 5880);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			if_block.m(option, null);
+    			append(option, t);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type === (current_block_type = select_block_type_4(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(option, t);
+    				}
+    			}
+
+    			if ((changed.minuteList) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+
+    			if_block.d();
+    		}
+    	};
+    }
+
+    // (222:14) {#each $connections as choice}
+    function create_each_block$8(ctx) {
+    	var option, t0_value = ctx.choice.company.userprofile.companyName, t0, t1, option_value_value;
+
+    	return {
+    		c: function create() {
+    			option = element("option");
+    			t0 = text(t0_value);
+    			t1 = space();
+    			option.__value = option_value_value = ctx.choice;
+    			option.value = option.__value;
+    			add_location(option, file$g, 222, 16, 6722);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, option, anchor);
+    			append(option, t0);
+    			append(option, t1);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.$connections) && t0_value !== (t0_value = ctx.choice.company.userprofile.companyName)) {
+    				set_data(t0, t0_value);
+    			}
+
+    			if ((changed.$connections) && option_value_value !== (option_value_value = ctx.choice)) {
+    				option.__value = option_value_value;
+    			}
+
+    			option.value = option.__value;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(option);
+    			}
+    		}
+    	};
+    }
+
+    function create_fragment$j(ctx) {
+    	var div, main, current_block_type_index, if_block, div_intro, current;
+
+    	var if_block_creators = [
+    		create_if_block$4,
+    		create_else_block_4
+    	];
+
+    	var if_blocks = [];
+
+    	function select_block_type(ctx) {
+    		if (ctx.$connections.length > 0) return 0;
+    		return 1;
+    	}
+
+    	current_block_type_index = select_block_type(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			main = element("main");
+    			if_block.c();
+    			attr(main, "class", "svelte-1pvagza");
+    			add_location(main, file$g, 121, 2, 3128);
+    			add_location(div, file$g, 120, 0, 3091);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    			append(div, main);
+    			if_blocks[current_block_type_index].m(main, null);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			var previous_block_index = current_block_type_index;
+    			current_block_type_index = select_block_type(ctx);
+    			if (current_block_type_index === previous_block_index) {
+    				if_blocks[current_block_type_index].p(changed, ctx);
+    			} else {
+    				group_outros();
+    				transition_out(if_blocks[previous_block_index], 1, 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
+    				check_outros();
+
+    				if_block = if_blocks[current_block_type_index];
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
+    				}
+    				transition_in(if_block, 1);
+    				if_block.m(main, null);
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+
     			if (!div_intro) {
     				add_render_callback(() => {
     					div_intro = create_in_transition(div, fade, { duration: 500 });
@@ -13672,23 +18146,265 @@ var app = (function () {
     				});
     			}
 
-    			transition_in(router.$$.fragment, local);
-
     			current = true;
     		},
 
     		o: function outro(local) {
-    			transition_out(router.$$.fragment, local);
+    			transition_out(if_block);
     			current = false;
     		},
 
     		d: function destroy(detaching) {
     			if (detaching) {
     				detach(div);
-    				detach(t);
     			}
 
-    			destroy_component(router, detaching);
+    			if_blocks[current_block_type_index].d();
+    		}
+    	};
+    }
+
+    let dateFormat$2 = "#{l}, #{F} #{j}, #{Y}";
+
+    function instance$g($$self, $$props, $$invalidate) {
+    	let $myShifts, $connections;
+
+    	validate_store(myShifts, 'myShifts');
+    	subscribe($$self, myShifts, $$value => { $myShifts = $$value; $$invalidate('$myShifts', $myShifts); });
+    	validate_store(connections, 'connections');
+    	subscribe($$self, connections, $$value => { $connections = $$value; $$invalidate('$connections', $connections); });
+
+    	
+
+      const client = getClient();
+
+      let fromTime;
+      let toTime;
+      let note = "";
+      let isSponsored = false;
+      let companyId;
+      let selectedCompany;
+      let fromDate = formatDate(new Date(), dateFormat$2);
+      let toDate = formatDate(new Date(), dateFormat$2);
+      let fromCalendarStartDate = new Date();
+      let toCalendarStartDate = new Date();
+      let toCalendarEndDate = new Date();
+      let fromHour = 0;
+      let toHour = 0;
+      let fromMinute = 0;
+      let toMinute = 0;
+      let hourList = new Array(24);
+      let minuteList = new Array(60);
+      let fromClicked = false;
+      let fromDateChosen = false;
+      let toDateChosen = false;
+
+      for (var i = 0; i < hourList.length; i++) {
+        hourList[i] = i; $$invalidate('hourList', hourList);
+      }
+
+      for (var i = 0; i < minuteList.length; i++) {
+        minuteList[i] = i; $$invalidate('minuteList', minuteList);
+      }
+
+      // toCalendarStartDate = formatDate(toCalendarStartDate, dateFormat);
+      // fromCalendarStartDate = formatDate(fromCalendarStartDate, dateFormat);
+
+      async function postShift() {
+        try {
+          await mutate(client, {
+            mutation: POST_SHIFT,
+            variables: {
+              fromTime: fromTime,
+              toTime: toTime,
+              note: note,
+              isSponsored: isSponsored,
+              companyId: companyId
+            }
+          }).then(result => {
+            $myShifts = [...$myShifts, result.data.createShift.shift]; myShifts.set($myShifts);
+            console.log($myShifts);
+          });
+        } catch (error) {
+          console.log(error);
+        }
+      }
+
+      async function handleSubmit() {
+        if (!selectedCompany) {
+          notifications.danger("You must select a company to proceed");
+          return;
+        }
+
+        fromTime = new Date(fromDate + ", " + fromHour + ":" + fromMinute);
+        toTime = new Date(toDate + ", " + toHour + ":" + toMinute);
+
+        if (fromTime >= toTime) {
+          notifications.danger("Shift end date must be higher than start date");
+          return;
+        }
+
+        companyId = selectedCompany.company.id;
+        isSponsored = false;
+
+        postShift();
+
+        // console.log("From: " + fromTime);
+        // console.log("To: " + toTime);
+        // console.log(note);
+        // console.log(companyId);
+      }
+
+    	function datepicker0_formattedSelected_binding(value) {
+    		fromDate = value;
+    		$$invalidate('fromDate', fromDate);
+    	}
+
+    	function datepicker0_dateChosen_binding(value_1) {
+    		fromDateChosen = value_1;
+    		$$invalidate('fromDateChosen', fromDateChosen);
+    	}
+
+    	function open_handler() {
+    	                fromClicked = true; $$invalidate('fromClicked', fromClicked);
+    	              }
+
+    	function close_handler() {
+    	                fromClicked = false; $$invalidate('fromClicked', fromClicked);
+    	              }
+
+    	function select0_change_handler() {
+    		fromHour = select_value(this);
+    		$$invalidate('fromHour', fromHour);
+    		$$invalidate('hourList', hourList);
+    	}
+
+    	function select1_change_handler() {
+    		fromMinute = select_value(this);
+    		$$invalidate('fromMinute', fromMinute);
+    		$$invalidate('minuteList', minuteList);
+    	}
+
+    	function datepicker1_formattedSelected_binding(value_2) {
+    		toDate = value_2;
+    		$$invalidate('toDate', toDate), $$invalidate('fromDate', fromDate);
+    	}
+
+    	function datepicker1_dateChosen_binding(value_3) {
+    		toDateChosen = value_3;
+    		$$invalidate('toDateChosen', toDateChosen);
+    	}
+
+    	function select2_change_handler() {
+    		toHour = select_value(this);
+    		$$invalidate('toHour', toHour);
+    		$$invalidate('hourList', hourList);
+    	}
+
+    	function select3_change_handler() {
+    		toMinute = select_value(this);
+    		$$invalidate('toMinute', toMinute);
+    		$$invalidate('minuteList', minuteList);
+    	}
+
+    	function textarea_input_handler() {
+    		note = this.value;
+    		$$invalidate('note', note);
+    	}
+
+    	function select4_change_handler() {
+    		selectedCompany = select_value(this);
+    		$$invalidate('selectedCompany', selectedCompany);
+    	}
+
+    	$$self.$$.update = ($$dirty = { fromDate: 1, toCalendarEndDate: 1, toCalendarStartDate: 1 }) => {
+    		if ($$dirty.fromDate) { $$invalidate('toDate', toDate = fromDate); }
+    		if ($$dirty.fromDate || $$dirty.toCalendarEndDate || $$dirty.toCalendarStartDate) { {
+            $$invalidate('toCalendarStartDate', toCalendarStartDate = new Date(fromDate));
+            toCalendarEndDate.setDate(toCalendarStartDate.getDate() + 1);
+            // toCalendarEndDate = toCalendarEndDate;
+          } }
+    	};
+
+    	return {
+    		note,
+    		selectedCompany,
+    		fromDate,
+    		toDate,
+    		fromCalendarStartDate,
+    		toCalendarStartDate,
+    		fromHour,
+    		toHour,
+    		fromMinute,
+    		toMinute,
+    		hourList,
+    		minuteList,
+    		fromClicked,
+    		fromDateChosen,
+    		toDateChosen,
+    		handleSubmit,
+    		$connections,
+    		datepicker0_formattedSelected_binding,
+    		datepicker0_dateChosen_binding,
+    		open_handler,
+    		close_handler,
+    		select0_change_handler,
+    		select1_change_handler,
+    		datepicker1_formattedSelected_binding,
+    		datepicker1_dateChosen_binding,
+    		select2_change_handler,
+    		select3_change_handler,
+    		textarea_input_handler,
+    		select4_change_handler
+    	};
+    }
+
+    class PostShift extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, instance$g, create_fragment$j, safe_not_equal, []);
+    	}
+    }
+
+    /* src\dashboard\DashBoard.svelte generated by Svelte v3.6.7 */
+
+    const file$h = "src\\dashboard\\DashBoard.svelte";
+
+    function create_fragment$k(ctx) {
+    	var div, div_intro;
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+    			attr(div, "class", "svelte-4qciy9");
+    			add_location(div, file$h, 64, 0, 1526);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+    		},
+
+    		p: noop,
+
+    		i: function intro(local) {
+    			if (!div_intro) {
+    				add_render_callback(() => {
+    					div_intro = create_in_transition(div, fade, { duration: 500 });
+    					div_intro.start();
+    				});
+    			}
+    		},
+
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
     		}
     	};
     }
@@ -13697,7 +18413,7 @@ var app = (function () {
       return new Promise(resolve => setTimeout(resolve, ns));
     }
 
-    function instance$b($$self) {
+    function instance$h($$self) {
     	
 
       const client = getClient();
@@ -13748,16 +18464,16 @@ var app = (function () {
     class DashBoard extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$b, create_fragment$e, safe_not_equal, []);
+    		init(this, options, instance$h, create_fragment$k, safe_not_equal, []);
     	}
     }
 
     /* src\ConfirmInvitation.svelte generated by Svelte v3.6.7 */
     const { console: console_1$1 } = globals;
 
-    const file$c = "src\\ConfirmInvitation.svelte";
+    const file$i = "src\\ConfirmInvitation.svelte";
 
-    function create_fragment$f(ctx) {
+    function create_fragment$l(ctx) {
     	var main, div, p, t;
 
     	return {
@@ -13766,10 +18482,10 @@ var app = (function () {
     			div = element("div");
     			p = element("p");
     			t = text(ctx.label);
-    			add_location(p, file$c, 72, 4, 1919);
+    			add_location(p, file$i, 72, 4, 1919);
     			attr(div, "class", "card");
-    			add_location(div, file$c, 71, 2, 1895);
-    			add_location(main, file$c, 70, 0, 1885);
+    			add_location(div, file$i, 71, 2, 1895);
+    			add_location(main, file$i, 70, 0, 1885);
     		},
 
     		l: function claim(nodes) {
@@ -13814,7 +18530,7 @@ var app = (function () {
       push("/login");
     }
 
-    function instance$c($$self, $$props, $$invalidate) {
+    function instance$i($$self, $$props, $$invalidate) {
     	let $isLoggedIn;
 
     	validate_store(isLoggedIn, 'isLoggedIn');
@@ -13879,7 +18595,7 @@ var app = (function () {
     class ConfirmInvitation extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$c, create_fragment$f, safe_not_equal, ["params"]);
+    		init(this, options, instance$i, create_fragment$l, safe_not_equal, ["params"]);
     	}
 
     	get params() {
@@ -13893,9 +18609,9 @@ var app = (function () {
 
     /* src\NotFound.svelte generated by Svelte v3.6.7 */
 
-    const file$d = "src\\NotFound.svelte";
+    const file$j = "src\\NotFound.svelte";
 
-    function create_fragment$g(ctx) {
+    function create_fragment$m(ctx) {
     	var div, h1, div_intro;
 
     	return {
@@ -13904,8 +18620,8 @@ var app = (function () {
     			h1 = element("h1");
     			h1.textContent = "404 Error: Page Not Found";
     			attr(h1, "class", "svelte-ysidjt");
-    			add_location(h1, file$d, 11, 2, 164);
-    			add_location(div, file$d, 10, 0, 127);
+    			add_location(h1, file$j, 11, 2, 164);
+    			add_location(div, file$j, 10, 0, 127);
     		},
 
     		l: function claim(nodes) {
@@ -13941,7 +18657,7 @@ var app = (function () {
     class NotFound extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, null, create_fragment$g, safe_not_equal, []);
+    		init(this, options, null, create_fragment$m, safe_not_equal, []);
     	}
     }
 
@@ -13949,56 +18665,83 @@ var app = (function () {
 
 
 
-    const routes$1 = {
+    const routes = {
       "/": Home,
       "/login": LogIn,
       "/signup": SignUp,
       "/verifyaccount": VerifyAccount,
       "/forgotpassword": ForgotPassword,
       "/recoveraccount": RecoverAccount,
-      "/dashboard/*": DashBoard,
+      "/dashboard": DashBoard,
       "/confirminvitation/:id": ConfirmInvitation,
+      "/dashboard/invite": InviteEmployee,
+      "/dashboard/invitations": Invitations,
+      "/dashboard/shifts": Shifts,
+      "/dashboard/postshift": PostShift,
       "*": NotFound
     };
 
     /* src\Header.svelte generated by Svelte v3.6.7 */
 
-    const file$e = "src\\Header.svelte";
+    const file$k = "src\\Header.svelte";
 
-    // (30:4) {#if $isLoggedIn}
-    function create_if_block$2(ctx) {
-    	var div2, ul, t0, t1, li, a0, t2, div1, a1, t4, div0, t5, a2, dispose;
+    // (42:4) {#if $isLoggedIn}
+    function create_if_block_2$2(ctx) {
+    	var button, span, dispose;
 
-    	var if_block0 = (ctx.$user.isCompany) && create_if_block_3();
+    	return {
+    		c: function create() {
+    			button = element("button");
+    			span = element("span");
+    			attr(span, "class", "navbar-toggler-icon svelte-193ucez");
+    			add_location(span, file$k, 43, 8, 820);
+    			attr(button, "id", "menu-toggler");
+    			attr(button, "class", "btn bg-light svelte-193ucez");
+    			add_location(button, file$k, 42, 6, 741);
+    			dispose = listen(button, "click", ctx.toggleMenu);
+    		},
 
-    	var if_block1 = (!ctx.$user.isCompany) && create_if_block_2();
+    		m: function mount(target, anchor) {
+    			insert(target, button, anchor);
+    			append(button, span);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(button);
+    			}
+
+    			dispose();
+    		}
+    	};
+    }
+
+    // (58:4) {#if $isLoggedIn}
+    function create_if_block$5(ctx) {
+    	var div2, ul, li, a0, t0, div1, a1, t2, div0, t3, a2, dispose;
 
     	function select_block_type(ctx) {
-    		if (ctx.$user.email !== undefined) return create_if_block_1;
-    		return create_else_block$2;
+    		if (ctx.$user.email !== undefined) return create_if_block_1$2;
+    		return create_else_block$4;
     	}
 
     	var current_block_type = select_block_type(ctx);
-    	var if_block2 = current_block_type(ctx);
+    	var if_block = current_block_type(ctx);
 
     	return {
     		c: function create() {
     			div2 = element("div");
     			ul = element("ul");
-    			if (if_block0) if_block0.c();
-    			t0 = space();
-    			if (if_block1) if_block1.c();
-    			t1 = space();
     			li = element("li");
     			a0 = element("a");
-    			if_block2.c();
-    			t2 = space();
+    			if_block.c();
+    			t0 = space();
     			div1 = element("div");
     			a1 = element("a");
     			a1.textContent = "Profile";
-    			t4 = space();
+    			t2 = space();
     			div0 = element("div");
-    			t5 = space();
+    			t3 = space();
     			a2 = element("a");
     			a2.textContent = "Logout";
     			attr(a0, "class", "nav-link dropdown-toggle");
@@ -14008,78 +18751,52 @@ var app = (function () {
     			a0.dataset.toggle = "dropdown";
     			attr(a0, "aria-haspopup", "true");
     			attr(a0, "aria-expanded", "false");
-    			add_location(a0, file$e, 46, 12, 1455);
+    			add_location(a0, file$k, 77, 12, 2083);
     			attr(a1, "class", "dropdown-item");
     			attr(a1, "href", "#/");
-    			add_location(a1, file$e, 57, 14, 1896);
+    			add_location(a1, file$k, 88, 14, 2524);
     			attr(div0, "class", "dropdown-divider");
-    			add_location(div0, file$e, 58, 14, 1958);
+    			add_location(div0, file$k, 89, 14, 2586);
     			attr(a2, "class", "dropdown-item");
     			attr(a2, "href", "#/");
-    			add_location(a2, file$e, 59, 14, 2006);
-    			attr(div1, "class", "dropdown-menu");
+    			add_location(a2, file$k, 90, 14, 2634);
+    			attr(div1, "class", "dropdown-menu svelte-193ucez");
     			attr(div1, "aria-labelledby", "navbarDropdown");
-    			add_location(div1, file$e, 56, 12, 1820);
+    			add_location(div1, file$k, 87, 12, 2448);
     			attr(li, "class", "nav-item dropdown");
-    			add_location(li, file$e, 45, 10, 1411);
-    			attr(ul, "class", "navbar-nav ml-auto svelte-1ou4983");
-    			add_location(ul, file$e, 31, 8, 870);
-    			attr(div2, "class", "collapse navbar-collapse svelte-1ou4983");
+    			add_location(li, file$k, 76, 10, 2039);
+    			attr(ul, "class", "navbar-nav ml-auto svelte-193ucez");
+    			add_location(ul, file$k, 59, 8, 1356);
+    			attr(div2, "class", "collapse navbar-collapse svelte-193ucez");
     			attr(div2, "id", "navbarSupportedContent");
-    			add_location(div2, file$e, 30, 6, 794);
+    			add_location(div2, file$k, 58, 6, 1280);
     			dispose = listen(a2, "click", handleLogout);
     		},
 
     		m: function mount(target, anchor) {
     			insert(target, div2, anchor);
     			append(div2, ul);
-    			if (if_block0) if_block0.m(ul, null);
-    			append(ul, t0);
-    			if (if_block1) if_block1.m(ul, null);
-    			append(ul, t1);
     			append(ul, li);
     			append(li, a0);
-    			if_block2.m(a0, null);
-    			append(li, t2);
+    			if_block.m(a0, null);
+    			append(li, t0);
     			append(li, div1);
     			append(div1, a1);
-    			append(div1, t4);
+    			append(div1, t2);
     			append(div1, div0);
-    			append(div1, t5);
+    			append(div1, t3);
     			append(div1, a2);
     		},
 
     		p: function update(changed, ctx) {
-    			if (ctx.$user.isCompany) {
-    				if (!if_block0) {
-    					if_block0 = create_if_block_3();
-    					if_block0.c();
-    					if_block0.m(ul, t0);
-    				}
-    			} else if (if_block0) {
-    				if_block0.d(1);
-    				if_block0 = null;
-    			}
-
-    			if (!ctx.$user.isCompany) {
-    				if (!if_block1) {
-    					if_block1 = create_if_block_2();
-    					if_block1.c();
-    					if_block1.m(ul, t1);
-    				}
-    			} else if (if_block1) {
-    				if_block1.d(1);
-    				if_block1 = null;
-    			}
-
-    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block2) {
-    				if_block2.p(changed, ctx);
+    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
     			} else {
-    				if_block2.d(1);
-    				if_block2 = current_block_type(ctx);
-    				if (if_block2) {
-    					if_block2.c();
-    					if_block2.m(a0, null);
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(a0, null);
     				}
     			}
     		},
@@ -14089,88 +18806,14 @@ var app = (function () {
     				detach(div2);
     			}
 
-    			if (if_block0) if_block0.d();
-    			if (if_block1) if_block1.d();
-    			if_block2.d();
+    			if_block.d();
     			dispose();
     		}
     	};
     }
 
-    // (33:10) {#if $user.isCompany}
-    function create_if_block_3(ctx) {
-    	var li, a;
-
-    	return {
-    		c: function create() {
-    			li = element("li");
-    			a = element("a");
-    			a.textContent = "Invite Employee";
-    			attr(a, "class", "nav-link");
-    			attr(a, "href", "#/dashboard/invite");
-    			add_location(a, file$e, 34, 14, 985);
-    			attr(li, "class", "nav-item");
-    			add_location(li, file$e, 33, 12, 948);
-    		},
-
-    		m: function mount(target, anchor) {
-    			insert(target, li, anchor);
-    			append(li, a);
-    		},
-
-    		d: function destroy(detaching) {
-    			if (detaching) {
-    				detach(li);
-    			}
-    		}
-    	};
-    }
-
-    // (38:10) {#if !$user.isCompany}
-    function create_if_block_2(ctx) {
-    	var li0, a0, t_1, li1, a1;
-
-    	return {
-    		c: function create() {
-    			li0 = element("li");
-    			a0 = element("a");
-    			a0.textContent = "Shifts";
-    			t_1 = space();
-    			li1 = element("li");
-    			a1 = element("a");
-    			a1.textContent = "Invitations";
-    			attr(a0, "class", "nav-link");
-    			attr(a0, "href", "#/dashboard/shifts");
-    			add_location(a0, file$e, 39, 14, 1171);
-    			attr(li0, "class", "nav-item");
-    			add_location(li0, file$e, 38, 12, 1134);
-    			attr(a1, "class", "nav-link");
-    			attr(a1, "href", "#/dashboard/invitations");
-    			add_location(a1, file$e, 42, 14, 1297);
-    			attr(li1, "class", "nav-item");
-    			add_location(li1, file$e, 41, 12, 1260);
-    		},
-
-    		m: function mount(target, anchor) {
-    			insert(target, li0, anchor);
-    			append(li0, a0);
-    			insert(target, t_1, anchor);
-    			insert(target, li1, anchor);
-    			append(li1, a1);
-    		},
-
-    		d: function destroy(detaching) {
-    			if (detaching) {
-    				detach(li0);
-    				detach(t_1);
-    				detach(li1);
-    			}
-    		}
-    	};
-    }
-
-    // (55:58) {:else}
-    function create_else_block$2(ctx) {
+    // (86:58) {:else}
+    function create_else_block$4(ctx) {
     	var t;
 
     	return {
@@ -14192,8 +18835,8 @@ var app = (function () {
     	};
     }
 
-    // (55:14) {#if $user.email !== undefined}
-    function create_if_block_1(ctx) {
+    // (86:14) {#if $user.email !== undefined}
+    function create_if_block_1$2(ctx) {
     	var t_value = ctx.$user.email, t;
 
     	return {
@@ -14219,38 +18862,42 @@ var app = (function () {
     	};
     }
 
-    function create_fragment$h(ctx) {
-    	var main, nav, a, t1, button, span, t2;
+    function create_fragment$n(ctx) {
+    	var main, nav, t0, a, t2, button, span, t3;
 
-    	var if_block = (ctx.$isLoggedIn) && create_if_block$2(ctx);
+    	var if_block0 = (ctx.$isLoggedIn) && create_if_block_2$2(ctx);
+
+    	var if_block1 = (ctx.$isLoggedIn) && create_if_block$5(ctx);
 
     	return {
     		c: function create() {
     			main = element("main");
     			nav = element("nav");
+    			if (if_block0) if_block0.c();
+    			t0 = space();
     			a = element("a");
     			a.textContent = "SWAPBOARD";
-    			t1 = space();
+    			t2 = space();
     			button = element("button");
     			span = element("span");
-    			t2 = space();
-    			if (if_block) if_block.c();
-    			attr(a, "class", "navbar-brand svelte-1ou4983");
+    			t3 = space();
+    			if (if_block1) if_block1.c();
+    			attr(a, "class", "navbar-brand svelte-193ucez");
     			attr(a, "href", "#/");
-    			add_location(a, file$e, 18, 4, 404);
-    			attr(span, "class", "navbar-toggler-icon svelte-1ou4983");
-    			add_location(span, file$e, 27, 6, 712);
-    			attr(button, "class", "navbar-toggler svelte-1ou4983");
+    			add_location(a, file$k, 46, 4, 890);
+    			attr(span, "class", "navbar-toggler-icon svelte-193ucez");
+    			add_location(span, file$k, 55, 6, 1198);
+    			attr(button, "class", "navbar-toggler svelte-193ucez");
     			attr(button, "type", "button");
     			button.dataset.toggle = "collapse";
     			button.dataset.target = "#navbarSupportedContent";
     			attr(button, "aria-controls", "navbarSupportedContent");
     			attr(button, "aria-expanded", "false");
     			attr(button, "aria-label", "Toggle navigation");
-    			add_location(button, file$e, 19, 4, 457);
-    			attr(nav, "class", "navbar sticky-top navbar-expand-sm navbar-light bg-light svelte-1ou4983");
-    			add_location(nav, file$e, 17, 2, 328);
-    			add_location(main, file$e, 16, 0, 318);
+    			add_location(button, file$k, 47, 4, 943);
+    			attr(nav, "class", "navbar fixed-top navbar-expand-sm navbar-light bg-light svelte-193ucez");
+    			add_location(nav, file$k, 40, 2, 641);
+    			add_location(main, file$k, 39, 0, 631);
     		},
 
     		l: function claim(nodes) {
@@ -14260,26 +18907,39 @@ var app = (function () {
     		m: function mount(target, anchor) {
     			insert(target, main, anchor);
     			append(main, nav);
+    			if (if_block0) if_block0.m(nav, null);
+    			append(nav, t0);
     			append(nav, a);
-    			append(nav, t1);
+    			append(nav, t2);
     			append(nav, button);
     			append(button, span);
-    			append(nav, t2);
-    			if (if_block) if_block.m(nav, null);
+    			append(nav, t3);
+    			if (if_block1) if_block1.m(nav, null);
     		},
 
     		p: function update(changed, ctx) {
     			if (ctx.$isLoggedIn) {
-    				if (if_block) {
-    					if_block.p(changed, ctx);
-    				} else {
-    					if_block = create_if_block$2(ctx);
-    					if_block.c();
-    					if_block.m(nav, null);
+    				if (!if_block0) {
+    					if_block0 = create_if_block_2$2(ctx);
+    					if_block0.c();
+    					if_block0.m(nav, t0);
     				}
-    			} else if (if_block) {
-    				if_block.d(1);
-    				if_block = null;
+    			} else if (if_block0) {
+    				if_block0.d(1);
+    				if_block0 = null;
+    			}
+
+    			if (ctx.$isLoggedIn) {
+    				if (if_block1) {
+    					if_block1.p(changed, ctx);
+    				} else {
+    					if_block1 = create_if_block$5(ctx);
+    					if_block1.c();
+    					if_block1.m(nav, null);
+    				}
+    			} else if (if_block1) {
+    				if_block1.d(1);
+    				if_block1 = null;
     			}
     		},
 
@@ -14291,7 +18951,8 @@ var app = (function () {
     				detach(main);
     			}
 
-    			if (if_block) if_block.d();
+    			if (if_block0) if_block0.d();
+    			if (if_block1) if_block1.d();
     		}
     	};
     }
@@ -14300,21 +18961,29 @@ var app = (function () {
       logout();
     }
 
-    function instance$d($$self, $$props, $$invalidate) {
-    	let $isLoggedIn, $user;
+    function instance$j($$self, $$props, $$invalidate) {
+    	let $menuDisplayed, $isLoggedIn, $user;
 
+    	validate_store(menuDisplayed, 'menuDisplayed');
+    	subscribe($$self, menuDisplayed, $$value => { $menuDisplayed = $$value; $$invalidate('$menuDisplayed', $menuDisplayed); });
     	validate_store(isLoggedIn, 'isLoggedIn');
     	subscribe($$self, isLoggedIn, $$value => { $isLoggedIn = $$value; $$invalidate('$isLoggedIn', $isLoggedIn); });
     	validate_store(user, 'user');
     	subscribe($$self, user, $$value => { $user = $$value; $$invalidate('$user', $user); });
 
-    	return { $isLoggedIn, $user };
+    	
+
+      function toggleMenu() {
+        menuDisplayed.set(!$menuDisplayed);
+      }
+
+    	return { toggleMenu, $isLoggedIn, $user };
     }
 
     class Header extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$d, create_fragment$h, safe_not_equal, []);
+    		init(this, options, instance$j, create_fragment$n, safe_not_equal, []);
     	}
     }
 
@@ -15466,29 +20135,149 @@ var app = (function () {
 
     /* src\App.svelte generated by Svelte v3.6.7 */
 
-    const file$f = "src\\App.svelte";
+    const file$l = "src\\App.svelte";
 
-    function create_fragment$i(ctx) {
-    	var main, t0, t1, current;
+    // (222:8) {#if !$user.isCompany}
+    function create_if_block_1$3(ctx) {
+    	var li, a;
 
-    	var noto = new Noto({ $$inline: true });
+    	return {
+    		c: function create() {
+    			li = element("li");
+    			a = element("a");
+    			a.textContent = "Post Shift";
+    			attr(a, "href", "#/dashboard/postshift");
+    			attr(a, "class", "svelte-1iijn7s");
+    			add_location(a, file$l, 223, 12, 6167);
+    			attr(li, "class", "svelte-1iijn7s");
+    			add_location(li, file$l, 222, 10, 6149);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, li, anchor);
+    			append(li, a);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(li);
+    			}
+    		}
+    	};
+    }
+
+    // (233:10) {:else}
+    function create_else_block$5(ctx) {
+    	var a;
+
+    	return {
+    		c: function create() {
+    			a = element("a");
+    			a.textContent = "Invitations";
+    			attr(a, "href", "#/dashboard/invitations");
+    			attr(a, "class", "svelte-1iijn7s");
+    			add_location(a, file$l, 233, 12, 6457);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, a, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(a);
+    			}
+    		}
+    	};
+    }
+
+    // (231:10) {#if $user.isCompany}
+    function create_if_block$6(ctx) {
+    	var a;
+
+    	return {
+    		c: function create() {
+    			a = element("a");
+    			a.textContent = "Invite";
+    			attr(a, "href", "#/dashboard/invite");
+    			attr(a, "class", "svelte-1iijn7s");
+    			add_location(a, file$l, 231, 12, 6385);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, a, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(a);
+    			}
+    		}
+    	};
+    }
+
+    function create_fragment$o(ctx) {
+    	var main, t0, div2, div0, ul, t1, li0, a, t3, li1, t4, div1, t5, div2_class_value, current;
 
     	var header = new Header({ $$inline: true });
 
+    	var if_block0 = (!ctx.$user.isCompany) && create_if_block_1$3();
+
+    	function select_block_type(ctx) {
+    		if (ctx.$user.isCompany) return create_if_block$6;
+    		return create_else_block$5;
+    	}
+
+    	var current_block_type = select_block_type(ctx);
+    	var if_block1 = current_block_type(ctx);
+
+    	var noto = new Noto({ $$inline: true });
+
     	var router = new Router({
-    		props: { routes: routes$1 },
+    		props: { routes: routes },
     		$$inline: true
     	});
 
     	return {
     		c: function create() {
     			main = element("main");
-    			noto.$$.fragment.c();
-    			t0 = space();
     			header.$$.fragment.c();
+    			t0 = space();
+    			div2 = element("div");
+    			div0 = element("div");
+    			ul = element("ul");
+    			if (if_block0) if_block0.c();
     			t1 = space();
+    			li0 = element("li");
+    			a = element("a");
+    			a.textContent = "Shift";
+    			t3 = space();
+    			li1 = element("li");
+    			if_block1.c();
+    			t4 = space();
+    			div1 = element("div");
+    			noto.$$.fragment.c();
+    			t5 = space();
     			router.$$.fragment.c();
-    			add_location(main, file$f, 147, 0, 4582);
+    			attr(a, "href", "#/dashboard/shifts");
+    			attr(a, "class", "svelte-1iijn7s");
+    			add_location(a, file$l, 227, 10, 6271);
+    			attr(li0, "class", "svelte-1iijn7s");
+    			add_location(li0, file$l, 226, 8, 6255);
+    			attr(li1, "class", "svelte-1iijn7s");
+    			add_location(li1, file$l, 229, 8, 6334);
+    			attr(ul, "class", "sidebar-nav svelte-1iijn7s");
+    			add_location(ul, file$l, 220, 6, 6081);
+    			attr(div0, "id", "sidebar-wrapper");
+    			attr(div0, "class", " svelte-1iijn7s");
+    			add_location(div0, file$l, 218, 4, 6036);
+    			attr(div1, "id", "page-content-wrapper");
+    			attr(div1, "class", "svelte-1iijn7s");
+    			add_location(div1, file$l, 238, 4, 6569);
+    			attr(div2, "id", "wrapper");
+    			attr(div2, "class", div2_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " svelte-1iijn7s");
+    			add_location(div2, file$l, 216, 2, 5964);
+    			add_location(main, file$l, 214, 0, 5940);
     		},
 
     		l: function claim(nodes) {
@@ -15497,25 +20286,61 @@ var app = (function () {
 
     		m: function mount(target, anchor) {
     			insert(target, main, anchor);
-    			mount_component(noto, main, null);
-    			append(main, t0);
     			mount_component(header, main, null);
-    			append(main, t1);
-    			mount_component(router, main, null);
+    			append(main, t0);
+    			append(main, div2);
+    			append(div2, div0);
+    			append(div0, ul);
+    			if (if_block0) if_block0.m(ul, null);
+    			append(ul, t1);
+    			append(ul, li0);
+    			append(li0, a);
+    			append(ul, t3);
+    			append(ul, li1);
+    			if_block1.m(li1, null);
+    			append(div2, t4);
+    			append(div2, div1);
+    			mount_component(noto, div1, null);
+    			append(div1, t5);
+    			mount_component(router, div1, null);
     			current = true;
     		},
 
     		p: function update(changed, ctx) {
+    			if (!ctx.$user.isCompany) {
+    				if (!if_block0) {
+    					if_block0 = create_if_block_1$3();
+    					if_block0.c();
+    					if_block0.m(ul, t1);
+    				}
+    			} else if (if_block0) {
+    				if_block0.d(1);
+    				if_block0 = null;
+    			}
+
+    			if (current_block_type !== (current_block_type = select_block_type(ctx))) {
+    				if_block1.d(1);
+    				if_block1 = current_block_type(ctx);
+    				if (if_block1) {
+    					if_block1.c();
+    					if_block1.m(li1, null);
+    				}
+    			}
+
     			var router_changes = {};
-    			if (changed.routes) router_changes.routes = routes$1;
+    			if (changed.routes) router_changes.routes = routes;
     			router.$set(router_changes);
+
+    			if ((!current || changed.$menuDisplayed) && div2_class_value !== (div2_class_value = "" + (ctx.$menuDisplayed ? 'menuDisplayed' : '') + " svelte-1iijn7s")) {
+    				attr(div2, "class", div2_class_value);
+    			}
     		},
 
     		i: function intro(local) {
     			if (current) return;
-    			transition_in(noto.$$.fragment, local);
-
     			transition_in(header.$$.fragment, local);
+
+    			transition_in(noto.$$.fragment, local);
 
     			transition_in(router.$$.fragment, local);
 
@@ -15523,8 +20348,8 @@ var app = (function () {
     		},
 
     		o: function outro(local) {
-    			transition_out(noto.$$.fragment, local);
     			transition_out(header.$$.fragment, local);
+    			transition_out(noto.$$.fragment, local);
     			transition_out(router.$$.fragment, local);
     			current = false;
     		},
@@ -15534,22 +20359,29 @@ var app = (function () {
     				detach(main);
     			}
 
-    			destroy_component(noto, );
-
     			destroy_component(header, );
+
+    			if (if_block0) if_block0.d();
+    			if_block1.d();
+
+    			destroy_component(noto, );
 
     			destroy_component(router, );
     		}
     	};
     }
 
-    function instance$e($$self, $$props, $$invalidate) {
-    	let $isLoggedIn, $keepMeLoggedIn;
+    function instance$k($$self, $$props, $$invalidate) {
+    	let $isLoggedIn, $keepMeLoggedIn, $menuDisplayed, $user;
 
     	validate_store(isLoggedIn, 'isLoggedIn');
     	subscribe($$self, isLoggedIn, $$value => { $isLoggedIn = $$value; $$invalidate('$isLoggedIn', $isLoggedIn); });
     	validate_store(keepMeLoggedIn, 'keepMeLoggedIn');
     	subscribe($$self, keepMeLoggedIn, $$value => { $keepMeLoggedIn = $$value; $$invalidate('$keepMeLoggedIn', $keepMeLoggedIn); });
+    	validate_store(menuDisplayed, 'menuDisplayed');
+    	subscribe($$self, menuDisplayed, $$value => { $menuDisplayed = $$value; $$invalidate('$menuDisplayed', $menuDisplayed); });
+    	validate_store(user, 'user');
+    	subscribe($$self, user, $$value => { $user = $$value; $$invalidate('$user', $user); });
 
     	
 
@@ -15646,8 +20478,10 @@ var app = (function () {
 
       if ($keepMeLoggedIn === true && $isLoggedIn === false) {
         isLoggedIn.set(true);
+        menuDisplayed.set(true);
         tokenRefreshTimeoutFunc(client);
       } else if ($isLoggedIn === true) {
+        menuDisplayed.set(true);
         tokenRefreshTimeoutFunc(client);
       } else {
         localStorage.setItem("new-tab-event", "newtab" + Math.random());
@@ -15664,13 +20498,17 @@ var app = (function () {
           } }
     	};
 
-    	return {};
+    	if (window.screen.availWidth < 640) {
+            menuDisplayed.set(false);
+          }
+
+    	return { $menuDisplayed, $user };
     }
 
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance$e, create_fragment$i, safe_not_equal, []);
+    		init(this, options, instance$k, create_fragment$o, safe_not_equal, []);
     	}
     }
 

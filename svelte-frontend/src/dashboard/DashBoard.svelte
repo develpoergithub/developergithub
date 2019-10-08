@@ -63,4 +63,3 @@
 </style>
 
 <div in:fade={{ duration: 500 }} />
-<Router {routes} />

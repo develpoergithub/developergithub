@@ -1,4 +1,5 @@
 import graphene
+from django.db.models import Q
 from graphene_django import DjangoObjectType
 from account.schema import UserType
 from account.models import User, UserConnection
@@ -92,7 +93,7 @@ class CreateShiftConnection(graphene.Mutation):
             raise Exception(
                 "CAN NOT Create a Connection Between Shifts of same User")
 
-        if not shift.posted_to == proposed_shift.posted_to:
+        if shift.posted_to != proposed_shift.posted_to:
             raise Exception(
                 "CAN NOT Create a Connection Between Shifts Posted To Different Company"
             )
@@ -101,7 +102,7 @@ class CreateShiftConnection(graphene.Mutation):
         if user.is_company:
             raise Exception("Company CAN NOT Create a ShiftConnection")
 
-        if not proposed_shift.posted_by == user:
+        if proposed_shift.posted_by != user:
             raise Exception(
                 "The Proposed Shift must belong to the Current User")
 
@@ -136,7 +137,7 @@ class ConfirmShiftConnection(graphene.Mutation):
             raise Exception("Company CAN NOT Confirm a ShiftConnection")
 
         # Make sure that the current user == the Shift posted_by in ShiftConnection
-        if not shift_connection.shift.posted_by == user:
+        if shift_connection.shift.posted_by != user:
             raise Exception(
                 "Only the posted_by(User) of a Shift CAN Confirm ShiftConnection"
             )
@@ -151,6 +152,8 @@ class ShiftQuery(graphene.ObjectType):
     shifts = graphene.List(ShiftType, company_id=graphene.ID())
     all_shifts = graphene.List(ShiftType)
     all_shift_connections = graphene.List(ShiftConnectionType)
+    shift_connections = graphene.List(
+        ShiftConnectionType, shift_id=graphene.ID())
 
     @login_required
     def resolve_shifts(self, info, company_id):
@@ -164,3 +167,12 @@ class ShiftQuery(graphene.ObjectType):
 
     def resolve_all_shift_connections(self, info):
         return ShiftConnection.objects.all()
+
+    @login_required
+    def resolve_shift_connections(self, info, shift_id):
+        try:
+            shift = Shift.objects.get(id=shift_id)
+        except Shift.DoesNotExist:
+            raise Exception("IDs CAN NOT Resolve Shift, Check ID!")
+        return ShiftConnection.objects.filter(
+            Q(shift=shift) | Q(proposed_shift=shift))

@@ -41,10 +41,10 @@
         <Invitation invitation={invite} />
       {/each}
     {:else}
-      <h6>
+      <h5>
         No new Invitation(s), please request an invite from your company's
         admin!
-      </h6>
+      </h5>
     {/if}
   </div>
 </main>
