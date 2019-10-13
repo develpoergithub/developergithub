@@ -8,6 +8,7 @@
     refreshToken,
     user,
     connections,
+    shifts,
     menuDisplayed
   } from "../store.js";
   import { getClient, query, mutate } from "svelte-apollo";
@@ -15,7 +16,7 @@
   import { notifications } from "../Noto.svelte";
   import { formatDate } from "timeUtils";
 
-  let shifts = [];
+  // let shifts = [];
   let myShifts = [];
   let selectedShift;
   let clickedShift;
@@ -32,13 +33,17 @@
 
   const client = getClient();
 
-  async function fetchShifts() {
+  async function fetchShiftsFromInput() {
     if (!selectedCompany) {
       return;
     }
 
     selectedCompanyId = selectedCompany.company.id;
 
+    fetchShifts();
+  }
+
+  async function fetchShifts() {
     const getShifts = query(client, {
       query: GET_SHIFTS,
       variables: { companyId: selectedCompanyId }
@@ -46,10 +51,10 @@
 
     try {
       await getShifts.refetch().then(result => {
-        shifts = result.data.shifts;
-        myShifts = shifts.filter(shift => shift.postedBy.id === $user.id);
+        shifts.set(result.data.shifts);
+        myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
         // console.log(myShifts);
-        console.log(shifts);
+        // console.log($shifts);
       });
     } catch (error) {
       console.log(error);
@@ -129,6 +134,13 @@
       showing = true;
     }, 1);
   }
+
+  onMount(() => {
+    if ($user.isCompany) {
+      selectedCompanyId = $user.id;
+      fetchShifts();
+    }
+  });
 </script>
 
 <style>
@@ -233,37 +245,49 @@
 </style>
 
 <main in:fade={{ duration: 500 }}>
-  {#if $connections.length > 0}
-    <div
-      id="empty-container"
-      class="{$menuDisplayed ? 'menuDisplayed' : ''} fixed-top" />
-    <div id="form" class="{$menuDisplayed ? 'menuDisplayed' : ''} fixed-top">
-      <div class="input-group mb-3">
-        <select
-          on:change={fetchShifts}
-          bind:value={selectedCompany}
-          id="company-selector"
-          class="custom-select">
-          <option value="" selected disabled hidden>Select Company</option>
-          {#each $connections as choice}
-            <option value={choice}>
-              {choice.company.userprofile.companyName}
-            </option>
-          {/each}
-        </select>
+  {#if !$user.isCompany}
+    {#if $connections.length > 0}
+      <div
+        id="empty-container"
+        class="{$menuDisplayed ? 'menuDisplayed' : ''} fixed-top" />
+      <div id="form" class="{$menuDisplayed ? 'menuDisplayed' : ''} fixed-top">
+        <div class="input-group mb-3">
+          <select
+            on:change={fetchShiftsFromInput}
+            bind:value={selectedCompany}
+            id="company-selector"
+            class="custom-select">
+            <option value="" selected disabled hidden>Select Company</option>
+            {#each $connections as choice}
+              <option value={choice}>
+                {choice.company.userprofile.companyName}
+              </option>
+            {/each}
+          </select>
+        </div>
       </div>
-    </div>
-  {:else}
-    <div>
-      <h5>
-        You are not a member of any company yet, please request an invite from
-        your company's admin to start swapping shifts with your colleagues.
-      </h5>
-    </div>
+    {/if}
+  {/if}
+  {#if $connections.length < 1}
+    {#if !$user.isCompany}
+      <div>
+        <h5>
+          You are not a member of any company yet, please request an invite from
+          your company's admin to start swapping shifts with your colleagues.
+        </h5>
+      </div>
+    {:else}
+      <div>
+        <h5>
+          You do not have any staff on your company yet, please send invites to
+          your employees for them to start swapping shifts.
+        </h5>
+      </div>
+    {/if}
   {/if}
   <div bind:this={content} class="content">
-    {#if shifts.length > 0}
-      {#each shifts as shift, i (shift.id)}
+    {#if $shifts.length > 0}
+      {#each $shifts as shift, i (shift.id)}
         <ul
           bind:this={uls[i]}
           on:click={() => {
@@ -281,9 +305,6 @@
           <li class="list-group-item flex-fill">
             {shift.postedBy.userprofile.firstName + ' ' + shift.postedBy.userprofile.lastName}
           </li>
-          <li class="list-group-item flex-fill">
-            {shift.postedTo.userprofile.companyName}
-          </li>
         </ul>
       {/each}
     {/if}
@@ -293,44 +314,48 @@
       class={showing ? 'show' : 'hide'}>
       <div class="popover__content">
         {#if clickedShift}
-          {#if $user.id !== clickedShift.postedBy.id}
-            {#if myShifts.length > 0}
-              <div class="input-group mb-3">
-                <select
-                  bind:value={selectedShift}
-                  id="myShift-selector"
-                  class="custom-select">
-                  <option value="" selected disabled hidden>
-                    Select shift to propose
-                  </option>
-                  {#each myShifts as choice}
-                    <option value={choice}>
-                      <p>
-                        {'Starts ' + formatDate(new Date(choice.fromTime), dateFormat) + ' Ends ' + formatDate(new Date(choice.toTime), dateFormat)}
-                      </p>
+          {#if !$user.isCompany}
+            {#if $user.id !== clickedShift.postedBy.id}
+              {#if myShifts.length > 0}
+                <div class="input-group mb-3">
+                  <select
+                    bind:value={selectedShift}
+                    id="myShift-selector"
+                    class="custom-select">
+                    <option value="" selected disabled hidden>
+                      Select shift to propose
                     </option>
-                  {/each}
-                </select>
-              </div>
+                    {#each myShifts as choice}
+                      <option value={choice}>
+                        <p>
+                          {'Starts ' + formatDate(new Date(choice.fromTime), dateFormat) + ' Ends ' + formatDate(new Date(choice.toTime), dateFormat)}
+                        </p>
+                      </option>
+                    {/each}
+                  </select>
+                </div>
+              {:else}
+                <p>
+                  You do not have any shift to propose, post shift to start
+                  swapping.
+                </p>
+              {/if}
+              {#if selectedShift}
+                <p>
+                  Starts {formatDate(new Date(selectedShift.fromTime), dateFormat)}
+                </p>
+                <p>
+                  Ends {formatDate(new Date(selectedShift.toTime), dateFormat)}
+                </p>
+                <button on:click={proposeShift} class="btn btn-primary">
+                  Propose Selected Shift
+                </button>
+              {/if}
             {:else}
-              <p>
-                You do not have any shift to propose, post shift to start
-                swapping.
-              </p>
-            {/if}
-            {#if selectedShift}
-              <p>
-                Starts {formatDate(new Date(selectedShift.fromTime), dateFormat)}
-              </p>
-              <p>
-                Ends {formatDate(new Date(selectedShift.toTime), dateFormat)}
-              </p>
-              <button on:click={proposeShift} class="btn btn-primary">
-                Propose Selected Shift
-              </button>
+              <p>This is your shift!!!</p>
             {/if}
           {:else}
-            <p>This is your shift!!!</p>
+            <p>This shift was posted to your company.</p>
           {/if}
         {/if}
       </div>

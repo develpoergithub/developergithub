@@ -4,7 +4,12 @@
   import { fade } from "svelte/transition";
   import { getClient, query, mutate } from "svelte-apollo";
   import AuthRoute from "../AuthRoute.svelte";
-  import { login, tokenRefreshTimeoutFunc } from "../authMethods.js";
+  import {
+    login,
+    fetchUser,
+    fetchConnections,
+    tokenRefreshTimeoutFunc
+  } from "../authMethods.js";
   import { notifications } from "../Noto.svelte";
   // if ($isLoggedIn === true) {
   //   push("/dashboard/");
@@ -31,6 +36,8 @@
     try {
       await login(client, email, password, isKeepMeLoggedIn).then(() => {
         tokenRefreshTimeoutFunc(client);
+        fetchUser(client);
+        fetchConnections(client);
         push("/dashboard/");
       });
     } catch (error) {

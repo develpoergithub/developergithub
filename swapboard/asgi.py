@@ -7,6 +7,6 @@ import os
 import django
 from channels.routing import get_default_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "chatserver.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "swapboard.settings")
 django.setup()
 application = get_default_application()

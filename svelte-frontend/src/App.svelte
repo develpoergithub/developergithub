@@ -27,6 +27,8 @@
   import { useLocalStorage, useSessionStorage } from "./storage.js";
   import { REFRESH_TOKEN } from "./queries.js";
   import {
+    fetchUser,
+    fetchConnections,
     tokenRefreshTimeoutFunc,
     clearTokenRefreshTimeout
   } from "./authMethods.js";
@@ -82,7 +84,7 @@
     if (event.key == "login-event") {
       setTimeout(() => {
         isLoggedIn.set(true);
-        push("/dashboard/");
+        push("/dashboard/shifts");
       }, Math.random() * (2000 - 1000) + 1000);
       // localStorage.removeItem("login-event");
     } else if (event.key == "logout-event") {
@@ -100,8 +102,10 @@
     } else if (event.key == "currently-logged-in-event") {
       if ($isLoggedIn === false) {
         isLoggedIn.set(true);
-        push("/dashboard/");
+        push("/dashboard/shifts");
         tokenRefreshTimeoutFunc(client);
+        fetchUser(client);
+        fetchConnections(client);
       }
       // localStorage.removeItem("currently-logged-in-event");
     } else if (event.key == "start-timeout-event") {
@@ -127,9 +131,13 @@
     isLoggedIn.set(true);
     menuDisplayed.set(true);
     tokenRefreshTimeoutFunc(client);
+    fetchUser(client);
+    fetchConnections(client);
   } else if ($isLoggedIn === true) {
     menuDisplayed.set(true);
     tokenRefreshTimeoutFunc(client);
+    fetchUser(client);
+    fetchConnections(client);
   } else {
     localStorage.setItem("new-tab-event", "newtab" + Math.random());
   }

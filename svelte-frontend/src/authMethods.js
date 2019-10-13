@@ -6,13 +6,16 @@ import {
 	lastLoggedIn,
 	isLoggedIn,
 	user,
+	connections,
 	menuDisplayed
 } from './store.js';
 import {
 	CREATE_USER,
 	ACTIVATE_USER,
 	LOGIN_USER,
-	REFRESH_TOKEN
+	REFRESH_TOKEN,
+	GET_USER,
+	GET_CONNECTIONS
 } from './queries.js';
 
 let tokenRefreshTimeout;
@@ -141,4 +144,40 @@ export function logout() {
 	sessionStorage.setItem('startedTimeoutSession', JSON.stringify(false));
 	localStorage.setItem('startedTimeout', JSON.stringify(false));
 	localStorage.setItem('logout-event', 'logout' + Math.random());
+}
+
+export async function fetchUser(client) {
+	let getUser = query(client, {
+		query: GET_USER
+	});
+
+	try {
+		await getUser.refetch().then(result => {
+			user.set(result.data.me);
+		});
+	} catch (error) {
+		// console.log(error);
+		await timeout(3000);
+		fetchUser();
+	}
+}
+
+export async function fetchConnections(client) {
+	let getConnections = query(client, {
+		query: GET_CONNECTIONS
+	});
+	try {
+		await getConnections.refetch().then(result => {
+			connections.set(result.data.connections);
+			// console.log($connections);
+		});
+	} catch (error) {
+		// console.log(error);
+		await timeout(3000);
+		fetchConnections();
+	}
+}
+
+function timeout(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }

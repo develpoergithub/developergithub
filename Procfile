@@ -1,1 +1,1 @@
-web: gunicorn swapboard.wsgi --log-file -
+web: daphne swapboard.asgi:application --port $port --bind 0.0.0.0

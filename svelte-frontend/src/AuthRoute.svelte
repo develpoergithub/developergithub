@@ -7,7 +7,7 @@
       push("/login");
     }
   } else {
-    push("/dashboard/");
+    push("/dashboard/shifts");
   }
   // console.log("I am at : " + $location);
 </script>
