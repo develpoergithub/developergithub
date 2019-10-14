@@ -31,8 +31,8 @@ SECRET_KEY = "b$tbbtfvvoivyf^-#)qx&i2)9c*44pz7r9d5bf8qfn1l1n40d="
 DEBUG = (sys.argv[1] == 'runserver')
 
 # Uncomment this before building for production
-SECURE_SSL_REDIRECT = True
-SECURE_PROXY_SSL_HEADER = ('X-Forwarded-Proto', 'https')
+# SECURE_SSL_REDIRECT = True
+# SECURE_PROXY_SSL_HEADER = ('X-Forwarded-Proto', 'https')
 
 
 # CHANGE THIS BEFORE PRODUCTION
