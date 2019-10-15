@@ -46,6 +46,8 @@
     window.location.host +
     "/graphql";
 
+  console.log("WS : " + WS_GRAPHQL_ENDPOINT);
+
   const httpLink = new HttpLink({
     uri: HTTP_GRAPHQL_ENDPOINT
     // credentials: 'same-origin'
