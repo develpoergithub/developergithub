@@ -34,47 +34,58 @@
   } from "./authMethods.js";
   import Noto, { notifications } from "./Noto.svelte";
 
-  const HTTP_GRAPHQL_ENDPOINT =
-    (window.location.protocol === "https" ? "https" : "http") +
-    "://" +
-    window.location.host +
-    "/graphql";
+  let client;
 
-  const WS_GRAPHQL_ENDPOINT =
-    (window.location.protocol === "https" ? "wss" : "ws") +
-    "://" +
-    window.location.host +
-    "/graphql";
+  function setGraphQLClient() {
+    const HTTP_GRAPHQL_ENDPOINT =
+      (window.location.protocol === "https" ? "https" : "http") +
+      "://" +
+      window.location.host +
+      "/graphql";
 
-  console.log("WS : " + WS_GRAPHQL_ENDPOINT);
+    const WS_GRAPHQL_ENDPOINT =
+      (window.location.protocol === "https" ? "wss" : "ws") +
+      "://" +
+      window.location.host +
+      "/graphql";
 
-  const httpLink = new HttpLink({
-    uri: HTTP_GRAPHQL_ENDPOINT
-    // credentials: 'same-origin'
-  });
+    console.log("WS : " + WS_GRAPHQL_ENDPOINT);
 
-  const wsLink = new WebSocketLink({
-    uri: WS_GRAPHQL_ENDPOINT,
-    options: {
-      reconnect: true
-    }
-  });
+    const httpLink = new HttpLink({
+      uri: HTTP_GRAPHQL_ENDPOINT
+      // credentials: 'same-origin'
+    });
 
-  const link = split(
-    ({ query }) => {
-      const { kind, operation } = getMainDefinition(query);
-      return kind === "OperationDefinition" && operation === "subscription";
-    },
-    wsLink,
-    httpLink
-  );
+    const wsLink = new WebSocketLink({
+      uri: WS_GRAPHQL_ENDPOINT,
+      options: {
+        reconnect: true
+      }
+    });
 
-  const client = new ApolloClient({
-    link,
-    cache: new InMemoryCache()
-  });
+    const link = split(
+      ({ query }) => {
+        const { kind, operation } = getMainDefinition(query);
+        return kind === "OperationDefinition" && operation === "subscription";
+      },
+      wsLink,
+      httpLink
+    );
 
-  setClient(client);
+    client = new ApolloClient({
+      link,
+      cache: new InMemoryCache()
+    });
+  }
+
+  if (!client) {
+    setTimeout(() => {
+      setGraphQLClient();
+      setClient(client);
+    }, 1000);
+  } else {
+    setClient(client);
+  }
 
   useSessionStorage(isLoggedIn, "isLoggedIn");
   useLocalStorage(keepMeLoggedIn, "keepMeLoggedIn");
