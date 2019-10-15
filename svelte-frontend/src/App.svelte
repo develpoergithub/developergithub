@@ -35,20 +35,21 @@
   import Noto, { notifications } from "./Noto.svelte";
 
   const HTTP_GRAPHQL_ENDPOINT =
-    (window.location.protocol === "https" ? "https" : "http") +
+    (window.location.protocol === "https:" ? "https" : "http") +
     "://" +
     window.location.host +
     "/graphql";
 
   const WS_GRAPHQL_ENDPOINT =
-    (window.location.protocol === "https" ? "wss" : "wss") +
+    (window.location.protocol === "https:" ? "wss" : "wss") +
     "://" +
     window.location.host +
     "/graphql";
 
   function logProtocol() {
     setTimeout(() => {
-      console.log("PROTOCOL : " + window.location.protocol);
+      console.log("PROTOCOL HTTP : " + HTTP_GRAPHQL_ENDPOINT);
+      console.log("PROTOCOL WS : " + WS_GRAPHQL_ENDPOINT);
       logProtocol();
     }, 3000);
   }
