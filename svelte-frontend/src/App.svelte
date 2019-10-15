@@ -78,14 +78,10 @@
     });
   }
 
-  if (!client) {
-    setTimeout(() => {
-      setGraphQLClient();
-      setClient(client);
-    }, 1000);
-  } else {
+  setTimeout(() => {
+    setGraphQLClient();
     setClient(client);
-  }
+  }, 3000);
 
   useSessionStorage(isLoggedIn, "isLoggedIn");
   useLocalStorage(keepMeLoggedIn, "keepMeLoggedIn");
