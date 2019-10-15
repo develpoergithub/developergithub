@@ -41,7 +41,7 @@
     "/graphql";
 
   const WS_GRAPHQL_ENDPOINT =
-    (window.location.protocol === "https" ? "wss" : "wss") +
+    (window.location.protocol === "https" ? "wss" : "ws") +
     "://" +
     window.location.host +
     "/graphql";
