@@ -64,17 +64,17 @@ def create_and_send_activation_email(sender, **kwargs):
         )
 
 
-@receiver(post_save, sender=UserConnection)
-def create_and_send_user_connection_email(sender, instance, created, **kwargs):
-    if created:
-        id = instance.id
+# @receiver(post_save, sender=UserConnection)
+# def create_and_send_user_connection_email(sender, instance, created, **kwargs):
+#     if created:
+#         id = instance.id
 
-        msg = EmailMultiAlternatives(
-            subject="Invitation to join " +
-            instance.company.userprofile.company_name + " on SwapBoard",
-            body="Click the link to join: http://localhost:8000/#/confirminvitation/" +
-            str(id),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[instance.employee_email])
+#         msg = EmailMultiAlternatives(
+#             subject="Invitation to join " +
+#             instance.company.userprofile.company_name + " on SwapBoard",
+#             body="Click the link to join: http://localhost:8000/#/confirminvitation/" +
+#             str(id),
+#             from_email=settings.DEFAULT_FROM_EMAIL,
+#             to=[instance.employee_email])
 
-        msg.send()
+#         msg.send()
