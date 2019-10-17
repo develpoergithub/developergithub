@@ -51,12 +51,20 @@
       <h5 class="card-title">
         From {invitation.company.userprofile.companyName}
       </h5>
-      <p class="card-text">
-        Please accept invitation to post and swap shifts with your colleagues.
-      </p>
       {#if invitation.isConfirmed}
+        <p class="card-text">
+          You can now post and swap shifts with your colleagues in this company.
+        </p>
         <h5>You have already accepted this invitation!</h5>
+      {:else if invitation.isDeclined}
+        <p class="card-text">
+          You need to request another invite from your company's admin.
+        </p>
+        <h5>You declined this invitation!</h5>
       {:else}
+        <p class="card-text">
+          Please accept invitation to post and swap shifts with your colleagues.
+        </p>
         <button class="btn btn-primary" on:click={confirmInvitation}>
           Accept
         </button>

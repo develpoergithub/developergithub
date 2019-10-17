@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from "svelte";
   import { notifications } from "./Noto.svelte";
   import { isLoggedIn, user } from "./store.js";
   import { getClient, mutate } from "svelte-apollo";
@@ -16,21 +17,10 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async function waitToNotify(ms) {
-    await timeout(ms);
-  }
-
   async function pushToLogin(ms, msg) {
-    notifications.danger(msg, ms - ms * 0.15);
-    await waitToNotify(ms);
+    notifications.danger(msg, ms);
+    await timeout(ms);
     push("/login");
-  }
-
-  if ($isLoggedIn === false) {
-    msg = "You are not Logged in, redirecting to the log in page...";
-    pushToLogin(4000, msg);
-  } else {
-    confirmInvitation();
   }
 
   async function confirmInvitation() {
@@ -60,7 +50,18 @@
       }, 1800);
     }
   }
-  console.log(params.id);
+  // console.log(params.id);
+
+  onMount(async () => {
+    await timeout(3000);
+
+    if ($isLoggedIn === false) {
+      var msg = "You are not Logged in, redirecting to the log in page...";
+      await pushToLogin(2000, msg);
+    } else {
+      confirmInvitation();
+    }
+  });
 </script>
 
 <style>

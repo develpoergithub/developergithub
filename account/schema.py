@@ -1,8 +1,11 @@
+import sys
 import asgiref
 import channels
 import channels.auth
+from django.conf import settings
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail, EmailMultiAlternatives
 import graphene
 from graphene_django import DjangoObjectType
 from .models import User, UserConnection, UserActivation
@@ -103,6 +106,8 @@ class CreateUserConnection(graphene.Mutation):
             user_connection = UserConnection.objects.get(
                 company=user, employee_email=employee_email)
             # user_connection.save()
+            CreateUserConnection.send_email(
+                self, user, employee_email, user_connection.id)
             return CreateUserConnection(user_connection=user_connection)
             # raise Exception("The Requested Connection already exist!")
         except UserConnection.DoesNotExist:
@@ -113,8 +118,30 @@ class CreateUserConnection(graphene.Mutation):
         )
 
         user_connection.save()
-
+        CreateUserConnection.send_email(
+            self, user, employee_email, user_connection.id)
         return CreateUserConnection(user_connection=user_connection)
+
+    def send_email(self, user, employee_email, id):
+        RUNNING_DEVSERVER = (len(sys.argv) > 1 and sys.argv[1] == 'runserver')
+        if RUNNING_DEVSERVER:
+            msg = EmailMultiAlternatives(
+                subject="Invitation to join " +
+                user.userprofile.company_name + " on SwapBoard",
+                body="Click the link to join: http://localhost:8000/#/confirminvitation/" +
+                str(id),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[employee_email])
+            msg.send()
+        else:
+            msg = EmailMultiAlternatives(
+                subject="Invitation to join " +
+                user.userprofile.company_name + " on SwapBoard",
+                body="Click the link to join: https://swapboard.herokuapp.com/#/confirminvitation/" +
+                str(id),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[employee_email])
+            msg.send()
 
 
 class ConfirmUserConnection(graphene.Mutation):
@@ -140,6 +167,7 @@ class ConfirmUserConnection(graphene.Mutation):
 
             user_connection.employee = info.context.user
             user_connection.is_confirmed = True
+            user_connection.is_declined = False
             user_connection.save()
             return ConfirmUserConnection(user_connection=user_connection)
         except UserConnection.DoesNotExist:
@@ -147,12 +175,20 @@ class ConfirmUserConnection(graphene.Mutation):
 
 
 class UserQuery(graphene.ObjectType):
+    check_login = graphene.Boolean()
     me = graphene.Field(UserType)
     users = graphene.List(UserType)
     all_user_connections = graphene.List(UserConnectionType)
     invitations = graphene.List(UserConnectionType)
     connections = graphene.List(UserConnectionType)
 
+    def resolve_check_login(self, info):
+        user = info.context.user
+        if user.is_anonymous:
+            return False
+        return True
+
+    @login_required
     def resolve_me(self, info):
         user = info.context.user
         if user.is_anonymous:

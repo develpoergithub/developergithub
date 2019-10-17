@@ -15,7 +15,8 @@ import {
 	LOGIN_USER,
 	REFRESH_TOKEN,
 	GET_USER,
-	GET_CONNECTIONS
+	GET_CONNECTIONS,
+	CHECK_LOGIN
 } from './queries.js';
 
 let tokenRefreshTimeout;
@@ -34,12 +35,12 @@ async function tokenRefresh(client, oldToken) {
 			// push("/dashboard/");
 		});
 	} catch (error) {
-		// console.log(error);
+		console.log(error);
 		isLoggedIn.set(false);
 	}
 }
 
-export function tokenRefreshTimeoutFunc(client) {
+export async function tokenRefreshTimeoutFunc(client) {
 	if (localStorage.getItem('startedTimeout') === null) {
 		localStorage.setItem('startedTimeout', JSON.stringify(false));
 	}
@@ -71,7 +72,7 @@ export function tokenRefreshTimeoutFunc(client) {
 
 	if (timeDifference > refreshExpirationTime) {
 		//console.log(timeDifference + " > " + refreshExpirationTime);
-		tokenRefresh(client, oldToken);
+		await tokenRefresh(client, oldToken);
 	} else {
 		//console.log(timeDifference + " < " + refreshExpirationTime);
 		let remainingTime = refreshExpirationTime - timeDifference;
@@ -138,9 +139,9 @@ export function logout() {
 	refreshToken.set('');
 	lastLoggedIn.set(0);
 	keepMeLoggedIn.set(false);
+	menuDisplayed.set(false);
 	isLoggedIn.set(false);
 	user.set({});
-	menuDisplayed.set(false);
 	sessionStorage.setItem('startedTimeoutSession', JSON.stringify(false));
 	localStorage.setItem('startedTimeout', JSON.stringify(false));
 	localStorage.setItem('logout-event', 'logout' + Math.random());
@@ -156,9 +157,23 @@ export async function fetchUser(client) {
 			user.set(result.data.me);
 		});
 	} catch (error) {
-		// console.log(error);
-		await timeout(3000);
-		fetchUser();
+		console.log(error);
+		isLoggedIn.set(false);
+	}
+}
+
+export async function checkSession(client) {
+	let checkLogin = query(client, {
+		query: CHECK_LOGIN
+	});
+
+	try {
+		await checkLogin.refetch().then(result => {
+			isLoggedIn.set(result.data.checkLogin);
+		});
+	} catch (error) {
+		console.log(error);
+		isLoggedIn.set(false);
 	}
 }
 
@@ -172,12 +187,11 @@ export async function fetchConnections(client) {
 			// console.log($connections);
 		});
 	} catch (error) {
-		// console.log(error);
-		await timeout(3000);
-		fetchConnections();
+		console.log(error);
+		isLoggedIn.set(false);
 	}
 }
 
-function timeout(ms) {
+async function timeout(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }

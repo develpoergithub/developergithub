@@ -25,8 +25,8 @@
     menuDisplayed
   } from "./store.js";
   import { useLocalStorage, useSessionStorage } from "./storage.js";
-  import { REFRESH_TOKEN } from "./queries.js";
   import {
+    checkSession,
     fetchUser,
     fetchConnections,
     tokenRefreshTimeoutFunc,
@@ -41,7 +41,7 @@
     "/graphql";
 
   const WS_GRAPHQL_ENDPOINT =
-    (window.location.protocol.includes("https") ? "wss" : "wss") +
+    (window.location.protocol.includes("https") ? "wss" : "ws") +
     "://" +
     window.location.host +
     "/graphql";
@@ -84,37 +84,23 @@
   useLocalStorage(user, "user");
 
   window.addEventListener("storage", function(event) {
-    if (event.key == "login-event") {
-      setTimeout(() => {
-        isLoggedIn.set(true);
-        push("/dashboard/shifts");
-      }, Math.random() * (2000 - 1000) + 1000);
-      // localStorage.removeItem("login-event");
-    } else if (event.key == "logout-event") {
-      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
+    if (event.key === "login-event") {
+      if (!$isLoggedIn) {
+        setTimeout(() => {
+          isLoggedIn.set(true);
+        }, Math.random() * (1000 - 500) + 500);
+      }
+    } else if (event.key === "logout-event") {
       isLoggedIn.set(false);
-      // localStorage.removeItem("logout-event");
-    } else if (event.key == "new-tab-event") {
-      if ($isLoggedIn === true) {
-        localStorage.setItem(
-          "currently-logged-in-event",
-          "true" + Math.random()
-        );
-        // localStorage.removeItem("new-tab-event");
-      }
-    } else if (event.key == "currently-logged-in-event") {
-      if ($isLoggedIn === false) {
-        isLoggedIn.set(true);
-        push("/dashboard/shifts");
-        tokenRefreshTimeoutFunc(client);
-        fetchUser(client);
-        fetchConnections(client);
-      }
-      // localStorage.removeItem("currently-logged-in-event");
-    } else if (event.key == "start-timeout-event") {
+      sessionStorage.setItem("startedTimeoutSession", JSON.stringify(false));
+    } else if (event.key === "start-timeout-event") {
       setTimeout(() => {
         tokenRefreshTimeoutFunc(client);
       }, Math.random() * (10000 - 5000) + 5000);
+    } else if (event.key === "new-tab-event") {
+      if ($isLoggedIn) {
+        localStorage.setItem("login-event", "login" + Math.random());
+      }
     }
   });
 
@@ -130,33 +116,64 @@
     }
   });
 
-  if ($keepMeLoggedIn === true && $isLoggedIn === false) {
-    isLoggedIn.set(true);
-    menuDisplayed.set(true);
-    tokenRefreshTimeoutFunc(client);
-    fetchUser(client);
-    fetchConnections(client);
-  } else if ($isLoggedIn === true) {
-    menuDisplayed.set(true);
-    tokenRefreshTimeoutFunc(client);
-    fetchUser(client);
-    fetchConnections(client);
-  } else {
-    localStorage.setItem("new-tab-event", "newtab" + Math.random());
-  }
+  // if ($keepMeLoggedIn === true && $isLoggedIn === false) {
+  //   isLoggedIn.set(true);
+  //   menuDisplayed.set(true);
+  //   tokenRefreshTimeoutFunc(client);
+  //   fetchUser(client);
+  //   fetchConnections(client);
+  // } else if ($isLoggedIn === true) {
+  //   menuDisplayed.set(true);
+  //   tokenRefreshTimeoutFunc(client);
+  //   fetchUser(client);
+  //   fetchConnections(client);
+  // } else {
+  //   localStorage.setItem("new-tab-event", "newtab" + Math.random());
+  // }
 
   $: if ($isLoggedIn === false) {
-    // tokenRefreshTimeoutFunc(client);
-    // if (!$location.includes("/confirminvitation/")) {
-    //   push("/dashboard/");
-    // }
+    loggedOutFunc();
+  } else {
+    loggedInFunc();
+  }
+
+  async function loggedInFunc() {
+    push("/dashboard");
+    console.log("loggedIn, pushing to /dashboard");
+    await tokenRefreshTimeoutFunc(client);
+    await fetchUser(client);
+    fetchConnections(client);
+    menuDisplayed.set(true);
+  }
+
+  async function loggedOutFunc() {
+    menuDisplayed.set(false);
     clearTokenRefreshTimeout();
     push("/login");
+    console.log("loggedOut, pushing to /login");
   }
 
   $: if (window.screen.availWidth < 640) {
     menuDisplayed.set(false);
   }
+
+  onMount(async () => {
+    if ($isLoggedIn) {
+      console.log("Already Logged In");
+      return;
+    }
+
+    if ($keepMeLoggedIn) {
+      console.log("Keep Me Logged In is True");
+      isLoggedIn.set(true);
+      return;
+    }
+
+    localStorage.setItem("new-tab-event", "newTab" + Math.random());
+
+    // CHECK USER IF USER IS IN SESSION
+    // await checkSession(client);
+  });
 </script>
 
 <style>

@@ -50,6 +50,12 @@ export const GET_USER = gql`
 	}
 `;
 
+export const CHECK_LOGIN = gql`
+	{
+		checkLogin
+	}
+`;
+
 export const REFRESH_TOKEN = gql`
 	mutation($refreshToken: String!) {
 		refreshToken(refreshToken: $refreshToken) {
@@ -71,6 +77,7 @@ export const SEND_INVITATION = gql`
 					email
 				}
 				isConfirmed
+				isDeclined
 			}
 		}
 	}
@@ -80,14 +87,17 @@ export const GET_INVITATIONS = gql`
 	query {
 		invitations {
 			id
+			created
+			isDeclined
 			isConfirmed
 			employeeEmail
 			company {
+				id
 				userprofile {
+					id
 					companyName
 				}
 			}
-			created
 		}
 	}
 `;

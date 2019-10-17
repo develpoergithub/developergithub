@@ -47,12 +47,10 @@
     }
   }
 
-  // onMount(async () => {
-  //   // Set timeout only for testing
-  //   await timeout(2000);
-  //   fetchUser();
-  //   fetchConnections();
-  // });
+  onMount(async () => {
+    // Set timeout only for testing
+    push("/dashboard/shifts");
+  });
 </script>
 
 <style>
