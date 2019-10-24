@@ -124,24 +124,19 @@ class CreateUserConnection(graphene.Mutation):
 
     def send_email(self, user, employee_email, id):
         RUNNING_DEVSERVER = (len(sys.argv) > 1 and sys.argv[1] == 'runserver')
+        link = "https://swapboard.herokuapp.com/#/confirminvitation/"
         if RUNNING_DEVSERVER:
-            msg = EmailMultiAlternatives(
-                subject="Invitation to join " +
-                user.userprofile.company_name + " on SwapBoard",
-                body="Click the link to join: http://localhost:8000/#/confirminvitation/" +
-                str(id),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[employee_email])
-            msg.send()
+            link = "http://localhost:8000/#/confirminvitation/"
         else:
-            msg = EmailMultiAlternatives(
-                subject="Invitation to join " +
-                user.userprofile.company_name + " on SwapBoard",
-                body="Click the link to join: https://swapboard.herokuapp.com/#/confirminvitation/" +
-                str(id),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[employee_email])
-            msg.send()
+            link = "https://swapboard.herokuapp.com/#/confirminvitation/"
+        msg = EmailMultiAlternatives(
+            subject="Invitation to join " +
+            user.userprofile.company_name + " on SwapBoard",
+            body="Click the link to join: " + link +
+            str(id),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[employee_email])
+        msg.send()
 
 
 class ConfirmUserConnection(graphene.Mutation):

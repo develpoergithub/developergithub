@@ -7,6 +7,7 @@ import {
 	isLoggedIn,
 	user,
 	connections,
+	shifts,
 	menuDisplayed
 } from './store.js';
 import {
@@ -15,6 +16,7 @@ import {
 	LOGIN_USER,
 	REFRESH_TOKEN,
 	GET_USER,
+	GET_SHIFTS,
 	GET_CONNECTIONS,
 	CHECK_LOGIN
 } from './queries.js';
@@ -189,6 +191,25 @@ export async function fetchConnections(client) {
 	} catch (error) {
 		console.log(error);
 		isLoggedIn.set(false);
+	}
+}
+
+export async function fetchShifts(client, selectedCompanyId) {
+	const getShifts = query(client, {
+		query: GET_SHIFTS,
+		variables: { companyId: selectedCompanyId }
+	});
+
+	try {
+		console.log('Fetching Shifts');
+		await getShifts.refetch().then(result => {
+			shifts.set(result.data.shifts);
+			// myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
+			// console.log(myShifts);
+			// console.log($shifts);
+		});
+	} catch (error) {
+		console.log(error);
 	}
 }
 

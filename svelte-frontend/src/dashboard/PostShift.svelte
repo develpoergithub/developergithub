@@ -3,7 +3,7 @@
   import { getClient, mutate } from "svelte-apollo";
   import { notifications } from "../Noto.svelte";
   import { POST_SHIFT } from "../queries.js";
-  import { myShifts, connections } from "../store.js";
+  import { shifts, myShifts, connections, selectedCompany } from "../store.js";
   import { formatDate } from "timeUtils";
   import Datepicker from "svelte-calendar";
 
@@ -14,7 +14,7 @@
   let note = "";
   let isSponsored = false;
   let companyId;
-  let selectedCompany;
+  let company;
   let dateFormat = "#{l}, #{F} #{j}, #{Y}";
   let fromDate = formatDate(new Date(), dateFormat);
   let toDate = formatDate(new Date(), dateFormat);
@@ -55,15 +55,21 @@
         }
       }).then(result => {
         $myShifts = [...$myShifts, result.data.createShift.shift];
-        console.log($myShifts);
+        $shifts = [...$shifts, result.data.createShift.shift];
+        notifications.success("Congrats, your shift has been posted");
+        // console.log($myShifts);
       });
     } catch (error) {
+      notifications.danger(
+        "Sorry, there was an error while posting your shift"
+      );
       console.log(error);
     }
   }
 
   async function handleSubmit() {
-    if (!selectedCompany) {
+    company = $selectedCompany;
+    if (!company) {
       notifications.danger("You must select a company to proceed");
       return;
     }
@@ -76,7 +82,7 @@
       return;
     }
 
-    companyId = selectedCompany.company.id;
+    companyId = company.id;
     isSponsored = false;
 
     postShift();
@@ -121,120 +127,124 @@
 <div in:fade={{ duration: 500 }}>
   <main>
     {#if $connections.length > 0}
-      <div class="jumbotron">
-        <form class="" on:submit|preventDefault={handleSubmit}>
-          <div class="">
-            <h5>From :</h5>
-            <Datepicker
-              format={dateFormat}
-              start={fromCalendarStartDate}
-              bind:formattedSelected={fromDate}
-              bind:dateChosen={fromDateChosen}
-              on:open={() => {
-                fromClicked = true;
-              }}
-              on:close={() => {
-                fromClicked = false;
-              }}>
-              <input
-                type="text"
-                class="form-control date-field"
-                value={fromDate}
-                readonly
-                placeholder="Pick a start date" />
-
-            </Datepicker>
-            <select
-              bind:value={fromHour}
-              aria-describedby="inputGroupSelect01"
-              class="custom-select time-field">
-              {#each hourList as choice}
-                <option value={choice}>
-                  {#if choice < 10}0{choice}{:else}{choice}{/if}
-                </option>
-              {/each}
-            </select>
-            <select
-              bind:value={fromMinute}
-              aria-describedby="inputGroupSelect01"
-              class="custom-select time-field">
-              {#each minuteList as choice}
-                <option value={choice}>
-                  {#if choice < 10}0{choice}{:else}{choice}{/if}
-                </option>
-              {/each}
-            </select>
-          </div>
-          <div class="">
-            <h5>To :</h5>
-            <Datepicker
-              format={dateFormat}
-              start={toCalendarStartDate}
-              bind:formattedSelected={toDate}
-              bind:dateChosen={toDateChosen}>
-              {#if !fromClicked}
+      {#if Object.entries($selectedCompany).length > 0}
+        <div in:fade={{ duration: 500 }} class="jumbotron">
+          <form class="" on:submit|preventDefault={handleSubmit}>
+            <div class="">
+              <h5>From :</h5>
+              <Datepicker
+                format={dateFormat}
+                start={fromCalendarStartDate}
+                bind:formattedSelected={fromDate}
+                bind:dateChosen={fromDateChosen}
+                on:open={() => {
+                  fromClicked = true;
+                }}
+                on:close={() => {
+                  fromClicked = false;
+                }}>
                 <input
                   type="text"
                   class="form-control date-field"
-                  value={toDate}
+                  value={fromDate}
                   readonly
-                  placeholder="Pick a end date" />
-              {/if}
-            </Datepicker>
-            <select
-              bind:value={toHour}
-              aria-describedby="inputGroupSelect01"
-              class="custom-select time-field">
-              {#each hourList as choice}
-                <option value={choice}>
-                  {#if choice < 10}0{choice}{:else}{choice}{/if}
+                  placeholder="Pick a start date" />
+
+              </Datepicker>
+              <select
+                bind:value={fromHour}
+                aria-describedby="inputGroupSelect01"
+                class="custom-select time-field">
+                {#each hourList as choice}
+                  <option value={choice}>
+                    {#if choice < 10}0{choice}{:else}{choice}{/if}
+                  </option>
+                {/each}
+              </select>
+              <select
+                bind:value={fromMinute}
+                aria-describedby="inputGroupSelect01"
+                class="custom-select time-field">
+                {#each minuteList as choice}
+                  <option value={choice}>
+                    {#if choice < 10}0{choice}{:else}{choice}{/if}
+                  </option>
+                {/each}
+              </select>
+            </div>
+            <div class="">
+              <h5>To :</h5>
+              <Datepicker
+                format={dateFormat}
+                start={toCalendarStartDate}
+                bind:formattedSelected={toDate}
+                bind:dateChosen={toDateChosen}>
+                {#if !fromClicked}
+                  <input
+                    type="text"
+                    class="form-control date-field"
+                    value={toDate}
+                    readonly
+                    placeholder="Pick a end date" />
+                {/if}
+              </Datepicker>
+              <select
+                bind:value={toHour}
+                aria-describedby="inputGroupSelect01"
+                class="custom-select time-field">
+                {#each hourList as choice}
+                  <option value={choice}>
+                    {#if choice < 10}0{choice}{:else}{choice}{/if}
+                  </option>
+                {/each}
+              </select>
+              <select
+                bind:value={toMinute}
+                aria-describedby="inputGroupSelect01"
+                class="custom-select time-field">
+                {#each minuteList as choice}
+                  <option value={choice}>
+                    {#if choice < 10}0{choice}{:else}{choice}{/if}
+                  </option>
+                {/each}
+              </select>
+            </div>
+            <div class="">
+              <h5>Note :</h5>
+              <textarea
+                bind:value={note}
+                class="form-control"
+                name="note"
+                id="note"
+                cols=""
+                rows=""
+                placeholder="Enter a short note about this shift" />
+            </div>
+            <!-- <div class="mb-3">
+              <h5>Company :</h5>
+              <select bind:value={company} class="custom-select">
+                <option value="" selected disabled hidden>
+                  Select Company to post shift on
                 </option>
-              {/each}
-            </select>
-            <select
-              bind:value={toMinute}
-              aria-describedby="inputGroupSelect01"
-              class="custom-select time-field">
-              {#each minuteList as choice}
-                <option value={choice}>
-                  {#if choice < 10}0{choice}{:else}{choice}{/if}
-                </option>
-              {/each}
-            </select>
-          </div>
-          <div class="">
-            <h5>Note :</h5>
-            <textarea
-              bind:value={note}
-              class="form-control"
-              name="note"
-              id="note"
-              cols=""
-              rows=""
-              placeholder="Enter a short note about this shift" />
-          </div>
-          <div class="mb-3">
-            <h5>Company :</h5>
-            <select bind:value={selectedCompany} class="custom-select">
-              <option value="" selected disabled hidden>
-                Select Company to post shift on
-              </option>
-              {#each $connections as choice}
-                <option value={choice}>
-                  {choice.company.userprofile.companyName}
-                </option>
-              {/each}
-            </select>
-          </div>
-          <div class="">
-            <button
-              type="submit"
-              class="btn btn-primary form-control postShift-btn">
-              Post Shift
-            </button>
-          </div>
-        </form>
-      </div>
+                {#each $connections as choice}
+                  <option value={choice}>
+                    {choice.company.userprofile.companyName}
+                  </option>
+                {/each}
+              </select>
+            </div> -->
+            <div class="">
+              <button
+                type="submit"
+                class="btn btn-primary form-control postShift-btn">
+                Post Shift
+              </button>
+            </div>
+          </form>
+        </div>
+      {:else}
+        <h5>Please select a company at the top to post shifts</h5>
+      {/if}
     {:else}
       <div>
         <h5>

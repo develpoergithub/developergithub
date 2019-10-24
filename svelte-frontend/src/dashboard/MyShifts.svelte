@@ -19,11 +19,6 @@
   import { formatDate } from "timeUtils";
 
   // let shifts = [];
-  let selectedShift;
-  let clickedShift;
-  let showing = false;
-  let requestingShiftConnection = false;
-  let selectedCompanyId = "";
   let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
   let popoverX;
   let popoverY;
@@ -61,37 +56,37 @@
   //   }
   // }
 
-  async function proposeShift() {
-    if (requestingShiftConnection === true) {
-      notifications.info("A Shift Request is in progress!");
-      return;
-    }
+  //   async function proposeShift() {
+  //     if (requestingShiftConnection === true) {
+  //       notifications.info("A Shift Request is in progress!");
+  //       return;
+  //     }
 
-    if (!selectedShift || !clickedShift) {
-      notifications.danger("You must select a shift to propose");
-      return;
-    }
+  //     if (!selectedShift || !clickedShift) {
+  //       notifications.danger("You must select a shift to propose");
+  //       return;
+  //     }
 
-    requestingShiftConnection = true;
+  //     requestingShiftConnection = true;
 
-    try {
-      await mutate(client, {
-        mutation: PROPOSE_SHIFT,
-        variables: {
-          proposedShiftId: selectedShift.id,
-          shiftId: clickedShift.id
-        }
-      }).then(result => {
-        console.log(result.data.createShiftConnection.shiftConnection);
-        notifications.success("Shift Request Sent");
-        requestingShiftConnection = false;
-      });
-    } catch (error) {
-      notifications.danger("Something went wrong! Please try again.");
-      console.log(error);
-      requestingShiftConnection = false;
-    }
-  }
+  //     try {
+  //       await mutate(client, {
+  //         mutation: PROPOSE_SHIFT,
+  //         variables: {
+  //           proposedShiftId: selectedShift.id,
+  //           shiftId: clickedShift.id
+  //         }
+  //       }).then(result => {
+  //         console.log(result.data.createShiftConnection.shiftConnection);
+  //         notifications.success("Shift Request Sent");
+  //         requestingShiftConnection = false;
+  //       });
+  //     } catch (error) {
+  //       notifications.danger("Something went wrong! Please try again.");
+  //       console.log(error);
+  //       requestingShiftConnection = false;
+  //     }
+  //   }
 
   //   $: getShifts.refetch({ companyId: selectedCompanyId }).then(result => {
   //     shifts.set(result);
@@ -102,38 +97,38 @@
   //     console.log(selectedCompany.company.id);
   //   }
 
-  function handleClickedShift(shift, ul) {
-    if (requestingShiftConnection === true) {
-      notifications.info("A Shift Request is in progress!");
-      return;
-    }
+  //   function handleClickedShift(shift, ul) {
+  //     if (requestingShiftConnection === true) {
+  //       notifications.info("A Shift Request is in progress!");
+  //       return;
+  //     }
 
-    if (showing === true && clickedShift.id === shift.id) {
-      showing = false;
-      clickedShift = null;
-      popoverWrapper.style.display = "none";
-      return;
-    }
+  //     if (showing === true && clickedShift.id === shift.id) {
+  //       showing = false;
+  //       clickedShift = null;
+  //       popoverWrapper.style.display = "none";
+  //       return;
+  //     }
 
-    showing = false;
-    selectedShift = null;
-    popoverWrapper.style.display = "inline-block";
+  //     showing = false;
+  //     selectedShift = null;
+  //     popoverWrapper.style.display = "inline-block";
 
-    let contentRect = content.getBoundingClientRect();
-    let ulRect = ul.getBoundingClientRect();
-    let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
+  //     let contentRect = content.getBoundingClientRect();
+  //     let ulRect = ul.getBoundingClientRect();
+  //     let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
 
-    popoverX = ulRect.width / 2 - popoverContentRect.width / 2;
-    popoverY = ulRect.top - contentRect.height + window.scrollY;
-    popoverWrapper.style.left = popoverX + "px";
-    popoverWrapper.style.top = popoverY + "px";
+  //     popoverX = ulRect.width / 2 - popoverContentRect.width / 2;
+  //     popoverY = ulRect.top - contentRect.height + window.scrollY;
+  //     popoverWrapper.style.left = popoverX + "px";
+  //     popoverWrapper.style.top = popoverY + "px";
 
-    clickedShift = shift;
+  //     clickedShift = shift;
 
-    setTimeout(() => {
-      showing = true;
-    }, 1);
-  }
+  //     setTimeout(() => {
+  //       showing = true;
+  //     }, 1);
+  //   }
 
   // onMount(() => {
   //   if ($user.isCompany) {
@@ -297,13 +292,11 @@
     {/if}
   {/if}
   <div bind:this={content} class="content">
-    {#if $shifts.length > 0}
-      {#each $shifts as shift, i (shift.id)}
+    {#if $myShifts.length > 0}
+      {#each $myShifts as shift, i (shift.id)}
         <ul
           bind:this={uls[i]}
-          on:click={() => {
-            handleClickedShift(shift, uls[i]);
-          }}
+          on:click={() => {}}
           id="inner-list-group"
           class="list-group list-group-action list-group-horizontal
           list-group-flush">
@@ -313,18 +306,15 @@
           <li class="list-group-item flex-fill">
             {formatDate(new Date(shift.toTime), dateFormat)}
           </li>
-          <!-- <li class="list-group-item flex-fill">{shift.note}</li> -->
           <li class="list-group-item flex-fill">
             {shift.postedBy.userprofile.firstName + ' ' + shift.postedBy.userprofile.lastName}
           </li>
         </ul>
       {/each}
-    {:else if $user.isCompany}
-      <h5>No shifts posted to your company yet!</h5>
     {:else}
-      <h5>Select a company at the top to view and swap shifts!</h5>
+      <h5>Select a company at the top to view your shifts!</h5>
     {/if}
-    <div
+    <!-- <div
       bind:this={popoverWrapper}
       id="popover__wrapper"
       class={showing ? 'show' : 'hide'}>
@@ -375,6 +365,6 @@
           {/if}
         {/if}
       </div>
-    </div>
+    </div> -->
   </div>
 </main>

@@ -11,6 +11,7 @@
   import Invitations from "./dashboard/Invitations.svelte";
   import Shifts from "./dashboard/Shifts.svelte";
   import PostShift from "./dashboard/PostShift.svelte";
+  import MyShifts from "./dashboard/MyShifts.svelte";
   import NotFound from "./NotFound.svelte";
 
   export const routes = {
@@ -26,6 +27,7 @@
     "/dashboard/invitations": Invitations,
     "/dashboard/shifts": Shifts,
     "/dashboard/postshift": PostShift,
+    "/dashboard/myshifts": MyShifts,
     "*": NotFound
   };
 </script>

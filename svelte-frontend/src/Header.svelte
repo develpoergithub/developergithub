@@ -5,9 +5,13 @@
     isLoggedIn,
     refreshToken,
     user,
+    connections,
+    selectedCompany,
     menuDisplayed
   } from "./store.js";
   import { logout } from "./authMethods.js";
+
+  let selectedUserConnection;
 
   function handleLogout() {
     logout();
@@ -15,6 +19,10 @@
 
   function toggleMenu() {
     menuDisplayed.set(!$menuDisplayed);
+  }
+
+  function assignSelectedCompany() {
+    selectedCompany.set(selectedUserConnection.company);
   }
 </script>
 
@@ -28,7 +36,7 @@
 
   @media screen and (max-width: 640px) {
     #menu-toggler {
-      display: none;
+      /* display: none; */
     }
   }
 
@@ -74,6 +82,28 @@
               <a class="nav-link" href="#/dashboard/invitations">Invitations</a>
             </li>
           {/if} -->
+          {#if !$user.isCompany}
+            <li class="nav-item">
+              <div class="input-group mb-3">
+                <select
+                  on:change={assignSelectedCompany}
+                  bind:value={selectedUserConnection}
+                  id="company-selector"
+                  class="custom-select">
+                  <option value="" selected disabled hidden>
+                    Select Company
+                  </option>
+                  {#if $connections.length > 0}
+                    {#each $connections as choice}
+                      <option value={choice}>
+                        {choice.company.userprofile.companyName}
+                      </option>
+                    {/each}
+                  {/if}
+                </select>
+              </div>
+            </li>
+          {/if}
           <li class="nav-item dropdown">
             <a
               class="nav-link dropdown-toggle"
@@ -93,6 +123,7 @@
               </a>
             </div>
           </li>
+
         </ul>
       </div>
     {/if}

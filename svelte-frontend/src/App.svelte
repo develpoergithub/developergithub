@@ -22,6 +22,9 @@
     lastLoggedIn,
     refreshToken,
     user,
+    selectedCompany,
+    shifts,
+    myShifts,
     menuDisplayed
   } from "./store.js";
   import { useLocalStorage, useSessionStorage } from "./storage.js";
@@ -29,10 +32,13 @@
     checkSession,
     fetchUser,
     fetchConnections,
+    fetchShifts,
     tokenRefreshTimeoutFunc,
     clearTokenRefreshTimeout
   } from "./authMethods.js";
   import Noto, { notifications } from "./Noto.svelte";
+
+  let selectedCompanyId = "";
 
   const HTTP_GRAPHQL_ENDPOINT =
     (window.location.protocol.includes("https") ? "https" : "http") +
@@ -81,7 +87,7 @@
   useLocalStorage(keepMeLoggedIn, "keepMeLoggedIn");
   useLocalStorage(refreshToken, "refreshToken");
   useLocalStorage(lastLoggedIn, "lastLoggedIn");
-  useLocalStorage(user, "user");
+  // useLocalStorage(user, "user");
 
   window.addEventListener("storage", function(event) {
     if (event.key === "login-event") {
@@ -138,12 +144,16 @@
   }
 
   async function loggedInFunc() {
+    // console.log("loggedIn, pushing to /dashboard");
     push("/dashboard");
-    console.log("loggedIn, pushing to /dashboard");
+    menuDisplayed.set(true);
     await tokenRefreshTimeoutFunc(client);
     await fetchUser(client);
-    fetchConnections(client);
-    menuDisplayed.set(true);
+    await fetchConnections(client);
+    if ($user.isCompany) {
+      selectedCompanyId = $user.id;
+      getShifts();
+    }
   }
 
   async function loggedOutFunc() {
@@ -174,6 +184,18 @@
     // CHECK USER IF USER IS IN SESSION
     // await checkSession(client);
   });
+
+  $: if ($selectedCompany) {
+    selectedCompanyId = $selectedCompany.id;
+    getShifts();
+  }
+
+  async function getShifts() {
+    if (selectedCompanyId) {
+      await fetchShifts(client, selectedCompanyId);
+      $myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
+    }
+  }
 </script>
 
 <style>
@@ -255,6 +277,11 @@
         <li>
           <a href="#/dashboard/shifts">Shift</a>
         </li>
+        {#if !$user.isCompany}
+          <li>
+            <a href="#/dashboard/myshifts">My Shift</a>
+          </li>
+        {/if}
         <li>
           {#if $user.isCompany}
             <a href="#/dashboard/invite">Invite</a>

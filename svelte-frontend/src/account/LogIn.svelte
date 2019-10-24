@@ -8,8 +8,10 @@
     login,
     fetchUser,
     fetchConnections,
+    fetchShifts,
     tokenRefreshTimeoutFunc
   } from "../authMethods.js";
+  import { user, selectedCompany } from "../store.js";
   import { notifications } from "../Noto.svelte";
   // if ($isLoggedIn === true) {
   //   push("/dashboard/");
@@ -34,11 +36,14 @@
     }
 
     try {
-      await login(client, email, password, isKeepMeLoggedIn).then(() => {
-        tokenRefreshTimeoutFunc(client);
-        fetchUser(client);
-        fetchConnections(client);
-        push("/dashboard/");
+      await login(client, email, password, isKeepMeLoggedIn).then(async () => {
+        // tokenRefreshTimeoutFunc(client);
+        // await fetchUser(client);
+        // await fetchConnections(client);
+        // if ($user.isCompany) {
+        //   await fetchShifts(client, $user.id);
+        // }
+        // push("/dashboard/");
       });
     } catch (error) {
       // console.log(error);
