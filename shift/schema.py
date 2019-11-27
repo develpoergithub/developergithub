@@ -111,8 +111,8 @@ class CreateShiftConnection(graphene.Mutation):
         )
 
         if not created:
-            return CreateShiftConnection(shift_connection=shift_connection)
-            # raise Exception("ShiftConnection Already Exist")
+            # return CreateShiftConnection(shift_connection=shift_connection)
+            raise Exception("ShiftConnection Already Exist")
 
         return CreateShiftConnection(shift_connection=shift_connection)
 
@@ -153,11 +153,14 @@ class ShiftQuery(graphene.ObjectType):
     all_shifts = graphene.List(ShiftType)
     all_shift_connections = graphene.List(ShiftConnectionType)
     shift_connections = graphene.List(
-        ShiftConnectionType, shift_id=graphene.ID())
+        ShiftConnectionType, company_id=graphene.ID())
 
     @login_required
     def resolve_shifts(self, info, company_id):
-        company = User.objects.get(id=company_id)
+        try:
+            company = User.objects.get(id=company_id)
+        except User.DoesNotExist:
+            raise Exception("Can not resolve company from id")
         return Shift.objects.filter(posted_to=company)
 
     # Not Safe, Only for Testing
@@ -169,10 +172,11 @@ class ShiftQuery(graphene.ObjectType):
         return ShiftConnection.objects.all()
 
     @login_required
-    def resolve_shift_connections(self, info, shift_id):
+    def resolve_shift_connections(self, info, company_id):
+        user = info.context.user
         try:
-            shift = Shift.objects.get(id=shift_id)
-        except Shift.DoesNotExist:
-            raise Exception("IDs CAN NOT Resolve Shift, Check ID!")
+            company = User.objects.get(id=company_id)
+        except User.DoesNotExist:
+            raise Exception("Can not resolve company from id")
         return ShiftConnection.objects.filter(
-            Q(shift=shift) | Q(proposed_shift=shift))
+            Q(shift__posted_to=company) & (Q(shift__posted_by=user) | Q(proposed_shift__posted_by=user)))

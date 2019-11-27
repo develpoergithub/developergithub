@@ -33,10 +33,12 @@
     fetchUser,
     fetchConnections,
     fetchShifts,
+    fetchShiftConnections,
     tokenRefreshTimeoutFunc,
     clearTokenRefreshTimeout
   } from "./authMethods.js";
   import Noto, { notifications } from "./Noto.svelte";
+  import Table from "./table_view/Table.svelte";
 
   let selectedCompanyId = "";
 
@@ -194,6 +196,7 @@
     if (selectedCompanyId) {
       await fetchShifts(client, selectedCompanyId);
       $myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
+      await fetchShiftConnections(client, selectedCompanyId);
     }
   }
 </script>

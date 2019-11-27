@@ -9,5 +9,6 @@ export const invitations = writable([]);
 export const connections = writable([]);
 export const shifts = writable([]);
 export const myShifts = writable([]);
+export const shiftConnections = writable([]);
 export const menuDisplayed = writable(false);
 export const selectedCompany = writable({});

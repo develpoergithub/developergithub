@@ -8,6 +8,7 @@ import {
 	user,
 	connections,
 	shifts,
+	shiftConnections,
 	menuDisplayed
 } from './store.js';
 import {
@@ -18,6 +19,8 @@ import {
 	GET_USER,
 	GET_SHIFTS,
 	GET_CONNECTIONS,
+	GET_SHIFT_CONNECTIONS,
+	ACCEPT_SHIFT_CONNECTION,
 	CHECK_LOGIN
 } from './queries.js';
 
@@ -211,6 +214,29 @@ export async function fetchShifts(client, selectedCompanyId) {
 	} catch (error) {
 		console.log(error);
 	}
+}
+
+export async function fetchShiftConnections(client, companyId) {
+	const getShiftConnections = query(client, {
+		query: GET_SHIFT_CONNECTIONS,
+		variables: { companyId: companyId }
+	});
+
+	try {
+		await getShiftConnections.refetch().then(result => {
+			shiftConnections.set(result.data.shiftConnections);
+			// console.log(result.data.shiftConnections);
+		});
+	} catch (error) {
+		console.log(error);
+	}
+}
+
+export async function acceptShiftConnection(client, shiftConnectionId) {
+	await mutate(client, {
+		mutation: ACCEPT_SHIFT_CONNECTION,
+		variables: { shiftConnectionId: shiftConnectionId }
+	});
 }
 
 async function timeout(ms) {

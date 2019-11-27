@@ -2,6 +2,7 @@
   "name": "svelte-app",
   "version": "1.0.0",
   "devDependencies": {
+    "@modular-css/svelte": "^25.2.0",
     "apollo-boost": "0.4.3",
     "apollo-client": "^2.6.4",
     "eslint": "^6.1.0",

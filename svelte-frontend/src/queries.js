@@ -251,3 +251,71 @@ export const PROPOSE_SHIFT = gql`
 		}
 	}
 `;
+
+export const GET_SHIFT_CONNECTIONS = gql`
+	query($companyId: ID!) {
+		shiftConnections(companyId: $companyId) {
+			id
+			created
+			isAccepted
+			shift {
+				id
+				fromTime
+				toTime
+				note
+				isSponsored
+				postedBy {
+					id
+					userprofile {
+						firstName
+						lastName
+					}
+				}
+				postedTo {
+					id
+					userprofile {
+						companyName
+					}
+				}
+			}
+			proposedShift {
+				id
+				fromTime
+				toTime
+				note
+				isSponsored
+				postedBy {
+					id
+					userprofile {
+						firstName
+						lastName
+					}
+				}
+				postedTo {
+					id
+					userprofile {
+						companyName
+					}
+				}
+			}
+		}
+	}
+`;
+
+export const ACCEPT_SHIFT_CONNECTION = gql`
+	mutation($shiftConnectionId: ID!) {
+		confirmShiftConnection(shiftConnectionId: $shiftConnectionId) {
+			shiftConnection {
+				id
+				created
+				isAccepted
+				shift {
+					id
+				}
+				proposedShift {
+					id
+				}
+			}
+		}
+	}
+`;

@@ -17,6 +17,7 @@
   import { GET_SHIFTS, PROPOSE_SHIFT } from "../queries.js";
   import { notifications } from "../Noto.svelte";
   import { formatDate } from "timeUtils";
+  import TableView from "../TableView.svelte";
 
   // let shifts = [];
   let selectedShift;
@@ -30,6 +31,8 @@
   let popoverWrapper;
   let content;
   let uls = [];
+  let heads = ["From", "To", "Posted By", "Note"];
+  let bodies = [];
 
   const client = getClient();
 
@@ -87,8 +90,7 @@
         requestingShiftConnection = false;
       });
     } catch (error) {
-      notifications.danger("Something went wrong! Please try again.");
-      console.log(error);
+      notifications.danger(error.message);
       requestingShiftConnection = false;
     }
   }
@@ -102,7 +104,7 @@
   //     console.log(selectedCompany.company.id);
   //   }
 
-  function handleClickedShift(shift, ul) {
+  function handleClickedShift(shift, tr) {
     if (requestingShiftConnection === true) {
       notifications.info("A Shift Request is in progress!");
       return;
@@ -120,15 +122,16 @@
     popoverWrapper.style.display = "inline-block";
 
     let contentRect = content.getBoundingClientRect();
-    let ulRect = ul.getBoundingClientRect();
+    let trRect = tr.getBoundingClientRect();
     let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
 
-    popoverX = ulRect.width / 2 - popoverContentRect.width / 2;
-    popoverY = ulRect.top - contentRect.height + window.scrollY;
+    popoverX = trRect.left; //+ trRect.width / 2 - popoverContentRect.width / 2;
+    popoverY =
+      trRect.top + trRect.height / 3 - contentRect.height + window.scrollY;
     popoverWrapper.style.left = popoverX + "px";
     popoverWrapper.style.top = popoverY + "px";
 
-    clickedShift = shift;
+    clickedShift = $shifts.find(x => x.id === shift.id);
 
     setTimeout(() => {
       showing = true;
@@ -149,6 +152,24 @@
   //     fetchShifts();
   //   }
   // }
+
+  $: if ($shifts.length > 0) {
+    $shifts.forEach(element => {
+      let shiftDisplay = {
+        id: element.id,
+        From: formatDate(new Date(element.fromTime), dateFormat),
+        To: formatDate(new Date(element.toTime), dateFormat),
+        "Posted By":
+          element.postedBy.userprofile.firstName +
+          " " +
+          element.postedBy.userprofile.lastName,
+        Note: element.note
+      };
+      bodies.push(shiftDisplay);
+    });
+
+    bodies = bodies;
+  }
 </script>
 
 <style>
@@ -179,7 +200,8 @@
 
   .content {
     width: 100%;
-    margin-top: 10px;
+    margin-top: 0 auto;
+    display: inline-block;
   }
   #empty-container {
     margin-top: 55px;
@@ -256,6 +278,7 @@
 </style>
 
 <main in:fade={{ duration: 500 }}>
+
   <!-- {#if !$user.isCompany}
     {#if $connections.length > 0}
       <div
@@ -295,86 +318,67 @@
         </h5>
       </div>
     {/if}
-  {/if}
-  <div bind:this={content} class="content">
-    {#if $shifts.length > 0}
-      {#each $shifts as shift, i (shift.id)}
-        <ul
-          bind:this={uls[i]}
-          on:click={() => {
-            handleClickedShift(shift, uls[i]);
-          }}
-          id="inner-list-group"
-          class="list-group list-group-action list-group-horizontal
-          list-group-flush">
-          <li class="list-group-item flex-fill">
-            {formatDate(new Date(shift.fromTime), dateFormat)}
-          </li>
-          <li class="list-group-item flex-fill">
-            {formatDate(new Date(shift.toTime), dateFormat)}
-          </li>
-          <!-- <li class="list-group-item flex-fill">{shift.note}</li> -->
-          <li class="list-group-item flex-fill">
-            {shift.postedBy.userprofile.firstName + ' ' + shift.postedBy.userprofile.lastName}
-          </li>
-        </ul>
-      {/each}
-    {:else if $user.isCompany}
-      <h5>No shifts posted to your company yet!</h5>
-    {:else}
-      <h5>Select a company at the top to view and swap shifts!</h5>
-    {/if}
-    <div
-      bind:this={popoverWrapper}
-      id="popover__wrapper"
-      class={showing ? 'show' : 'hide'}>
-      <div class="popover__content">
-        {#if clickedShift}
-          {#if !$user.isCompany}
-            {#if $user.id !== clickedShift.postedBy.id}
-              {#if $myShifts.length > 0}
-                <div class="input-group mb-3">
-                  <select
-                    bind:value={selectedShift}
-                    id="myShift-selector"
-                    class="custom-select">
-                    <option value="" selected disabled hidden>
-                      Select shift to propose
-                    </option>
-                    {#each $myShifts as choice}
-                      <option value={choice}>
-                        <p>
-                          {'Starts ' + formatDate(new Date(choice.fromTime), dateFormat) + ' Ends ' + formatDate(new Date(choice.toTime), dateFormat)}
-                        </p>
+  {:else}
+    <div bind:this={content} class="content">
+      {#if bodies.length > 0}
+        <TableView {heads} {bodies} handleClick={handleClickedShift} />
+      {:else if $user.isCompany}
+        <h5>No shifts posted to your company yet!</h5>
+      {:else}
+        <h5>Select a company at the top to view and swap shifts!</h5>
+      {/if}
+      <div
+        bind:this={popoverWrapper}
+        id="popover__wrapper"
+        class={showing ? 'show' : 'hide'}>
+        <div class="popover__content">
+          {#if clickedShift}
+            {#if !$user.isCompany}
+              {#if $user.id !== clickedShift.postedBy.id}
+                {#if $myShifts.length > 0}
+                  <div class="input-group mb-3">
+                    <select
+                      bind:value={selectedShift}
+                      id="myShift-selector"
+                      class="custom-select">
+                      <option value="" selected disabled hidden>
+                        Select shift to propose
                       </option>
-                    {/each}
-                  </select>
-                </div>
+                      {#each $myShifts as choice}
+                        <option value={choice}>
+                          <p>
+                            {'Starts ' + formatDate(new Date(choice.fromTime), dateFormat) + ' Ends ' + formatDate(new Date(choice.toTime), dateFormat)}
+                          </p>
+                        </option>
+                      {/each}
+                    </select>
+                  </div>
+                {:else}
+                  <p>
+                    You do not have any shift to propose, post shift to start
+                    swapping.
+                  </p>
+                {/if}
+                {#if selectedShift}
+                  <p>
+                    Starts {formatDate(new Date(selectedShift.fromTime), dateFormat)}
+                  </p>
+                  <p>
+                    Ends {formatDate(new Date(selectedShift.toTime), dateFormat)}
+                  </p>
+                  <button on:click={proposeShift} class="btn btn-primary">
+                    Propose Selected Shift
+                  </button>
+                {/if}
               {:else}
-                <p>
-                  You do not have any shift to propose, post shift to start
-                  swapping.
-                </p>
-              {/if}
-              {#if selectedShift}
-                <p>
-                  Starts {formatDate(new Date(selectedShift.fromTime), dateFormat)}
-                </p>
-                <p>
-                  Ends {formatDate(new Date(selectedShift.toTime), dateFormat)}
-                </p>
-                <button on:click={proposeShift} class="btn btn-primary">
-                  Propose Selected Shift
-                </button>
+                <p>This is your shift!!!</p>
               {/if}
             {:else}
-              <p>This is your shift!!!</p>
+              <p>This shift was posted to your company.</p>
             {/if}
-          {:else}
-            <p>This shift was posted to your company.</p>
           {/if}
-        {/if}
+        </div>
       </div>
     </div>
-  </div>
+  {/if}
 </main>

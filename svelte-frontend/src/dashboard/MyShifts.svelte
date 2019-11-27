@@ -11,20 +11,32 @@
     selectedCompany,
     shifts,
     myShifts,
+    shiftConnections,
     menuDisplayed
   } from "../store.js";
+  import {
+    fetchShiftConnections,
+    acceptShiftConnection
+  } from "../authMethods.js";
   import { getClient, query, mutate } from "svelte-apollo";
   import { GET_SHIFTS, PROPOSE_SHIFT } from "../queries.js";
   import { notifications } from "../Noto.svelte";
   import { formatDate } from "timeUtils";
+  import TableView from "../TableView.svelte";
 
   // let shifts = [];
+  let selectedShift;
+  let proposedShiftConnections = [];
+  let clickedShift;
+  let showing = false;
   let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
   let popoverX;
   let popoverY;
   let popoverWrapper;
   let content;
   let uls = [];
+  let heads = ["From", "To", "Posted By", "Note"];
+  let bodies = [];
 
   const client = getClient();
 
@@ -97,45 +109,75 @@
   //     console.log(selectedCompany.company.id);
   //   }
 
-  //   function handleClickedShift(shift, ul) {
-  //     if (requestingShiftConnection === true) {
-  //       notifications.info("A Shift Request is in progress!");
-  //       return;
-  //     }
+  function handleClickedShift(shift, tr) {
+    if (showing === true && clickedShift.id === shift.id) {
+      showing = false;
+      clickedShift = null;
+      popoverWrapper.style.display = "none";
+      return;
+    }
 
-  //     if (showing === true && clickedShift.id === shift.id) {
-  //       showing = false;
-  //       clickedShift = null;
-  //       popoverWrapper.style.display = "none";
-  //       return;
-  //     }
+    showing = false;
+    popoverWrapper.style.display = "inline-block";
 
-  //     showing = false;
-  //     selectedShift = null;
-  //     popoverWrapper.style.display = "inline-block";
+    let contentRect = content.getBoundingClientRect();
+    let trRect = tr.getBoundingClientRect();
+    let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
 
-  //     let contentRect = content.getBoundingClientRect();
-  //     let ulRect = ul.getBoundingClientRect();
-  //     let popoverContentRect = popoverWrapper.firstChild.getBoundingClientRect();
+    popoverX = trRect.width / 2 - popoverContentRect.width / 2;
+    popoverY =
+      trRect.top + trRect.height / 3 - contentRect.height + window.scrollY;
+    popoverWrapper.style.left = popoverX + "px";
+    popoverWrapper.style.top = popoverY + "px";
 
-  //     popoverX = ulRect.width / 2 - popoverContentRect.width / 2;
-  //     popoverY = ulRect.top - contentRect.height + window.scrollY;
-  //     popoverWrapper.style.left = popoverX + "px";
-  //     popoverWrapper.style.top = popoverY + "px";
+    clickedShift = shift;
 
-  //     clickedShift = shift;
+    proposedShiftConnections = $shiftConnections.filter(
+      shiftConnection => shiftConnection.shift.id === clickedShift.id
+    );
 
-  //     setTimeout(() => {
-  //       showing = true;
-  //     }, 1);
-  //   }
+    setTimeout(() => {
+      showing = true;
+    }, 1);
+  }
 
-  // onMount(() => {
-  //   if ($user.isCompany) {
-  //     selectedCompanyId = $user.id;
-  //     fetchShifts();
-  //   }
-  // });
+  async function handleAcceptShiftProposal(id) {
+    // $shiftConnections.find(x => x.id === id).isAccepted = true;
+    try {
+      await acceptShiftConnection(client, id).then(result => {
+        $shiftConnections.find(x => x.id === id).isAccepted = true;
+      });
+    } catch (error) {
+      console.log(error);
+    }
+    showing = false;
+  }
+
+  onMount(async () => {
+    if (!$user.isCompany) {
+      if ($selectedCompany.id) {
+        await fetchShiftConnections(client, $selectedCompany.id);
+      }
+    }
+  });
+
+  $: if ($myShifts.length > 0) {
+    $myShifts.forEach(element => {
+      let shiftDisplay = {
+        id: element.id,
+        From: formatDate(new Date(element.fromTime), dateFormat),
+        To: formatDate(new Date(element.toTime), dateFormat),
+        "Posted By":
+          element.postedBy.userprofile.firstName +
+          " " +
+          element.postedBy.userprofile.lastName,
+        Note: element.note
+      };
+      bodies.push(shiftDisplay);
+    });
+
+    bodies = bodies;
+  }
 
   // $: if ($selectedCompany) {
   //   selectedCompanyId = $selectedCompany.id;
@@ -216,7 +258,7 @@
     margin-top: -12px;
     box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.26);
     transform: translate(0, 10px);
-    width: 248px;
+    /* width: 248px; */
   }
   .popover__content:before {
     position: absolute;
@@ -293,78 +335,49 @@
   {/if}
   <div bind:this={content} class="content">
     {#if $myShifts.length > 0}
-      {#each $myShifts as shift, i (shift.id)}
-        <ul
-          bind:this={uls[i]}
-          on:click={() => {}}
-          id="inner-list-group"
-          class="list-group list-group-action list-group-horizontal
-          list-group-flush">
-          <li class="list-group-item flex-fill">
-            {formatDate(new Date(shift.fromTime), dateFormat)}
-          </li>
-          <li class="list-group-item flex-fill">
-            {formatDate(new Date(shift.toTime), dateFormat)}
-          </li>
-          <li class="list-group-item flex-fill">
-            {shift.postedBy.userprofile.firstName + ' ' + shift.postedBy.userprofile.lastName}
-          </li>
-        </ul>
-      {/each}
+      <TableView {heads} {bodies} handleClick={handleClickedShift} />
     {:else}
       <h5>Select a company at the top to view your shifts!</h5>
     {/if}
-    <!-- <div
+    <div
       bind:this={popoverWrapper}
       id="popover__wrapper"
       class={showing ? 'show' : 'hide'}>
       <div class="popover__content">
-        {#if clickedShift}
-          {#if !$user.isCompany}
-            {#if $user.id !== clickedShift.postedBy.id}
-              {#if $myShifts.length > 0}
-                <div class="input-group mb-3">
-                  <select
-                    bind:value={selectedShift}
-                    id="myShift-selector"
-                    class="custom-select">
-                    <option value="" selected disabled hidden>
-                      Select shift to propose
-                    </option>
-                    {#each $myShifts as choice}
-                      <option value={choice}>
-                        <p>
-                          {'Starts ' + formatDate(new Date(choice.fromTime), dateFormat) + ' Ends ' + formatDate(new Date(choice.toTime), dateFormat)}
-                        </p>
-                      </option>
-                    {/each}
-                  </select>
-                </div>
-              {:else}
-                <p>
-                  You do not have any shift to propose, post shift to start
-                  swapping.
-                </p>
-              {/if}
-              {#if selectedShift}
-                <p>
-                  Starts {formatDate(new Date(selectedShift.fromTime), dateFormat)}
-                </p>
-                <p>
-                  Ends {formatDate(new Date(selectedShift.toTime), dateFormat)}
-                </p>
-                <button on:click={proposeShift} class="btn btn-primary">
-                  Propose Selected Shift
+        {#if proposedShiftConnections.length > 0}
+          {#each proposedShiftConnections as proposedShiftConnection}
+            <ul
+              id="inner-list-group"
+              class="list-group list-group-action list-group-horizontal
+              list-group-flush">
+              <li class="list-group-item flex-fill">
+                {formatDate(new Date(proposedShiftConnection.proposedShift.fromTime), dateFormat)}
+              </li>
+              <li class="list-group-item flex-fill">
+                {formatDate(new Date(proposedShiftConnection.proposedShift.toTime), dateFormat)}
+              </li>
+              <li class="list-group-item flex-fill">
+                {proposedShiftConnection.proposedShift.postedBy.userprofile.firstName + ' ' + proposedShiftConnection.proposedShift.postedBy.userprofile.lastName}
+              </li>
+              {#if !proposedShiftConnection.isAccepted}
+                <button
+                  on:click={() => {
+                    handleAcceptShiftProposal(proposedShiftConnection.id);
+                  }}
+                  class="btn btn-primary">
+                  Accept
                 </button>
+              {:else}
+                <li class="list-group-item flex-fill">
+                  <p>Accepted</p>
+                </li>
               {/if}
-            {:else}
-              <p>This is your shift!!!</p>
-            {/if}
-          {:else}
-            <p>This shift was posted to your company.</p>
-          {/if}
+            </ul>
+          {/each}
+        {:else}
+          <p>No proposals for this shift!</p>
         {/if}
       </div>
-    </div> -->
+    </div>
   </div>
 </main>
