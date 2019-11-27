@@ -132,6 +132,7 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 			toTime
 			note
 			isSponsored
+			created
 			postedBy {
 				id
 				email
@@ -170,22 +171,26 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 				id
 				fromTime
 				toTime
+				note
+				isSponsored
+				created
 				postedBy {
+					id
 					email
 					userprofile {
+						id
 						firstName
 						lastName
 					}
 				}
 				postedTo {
+					id
 					email
 					userprofile {
+						id
 						companyName
 					}
 				}
-				note
-				isSponsored
-				created
 			}
 		}
 	}

@@ -154,6 +154,7 @@ export const GET_SHIFTS = gql`
 			toTime
 			note
 			isSponsored
+			created
 			postedBy {
 				id
 				email
@@ -194,22 +195,26 @@ export const POST_SHIFT = gql`
 				id
 				fromTime
 				toTime
+				note
+				isSponsored
+				created
 				postedBy {
+					id
 					email
 					userprofile {
+						id
 						firstName
 						lastName
 					}
 				}
 				postedTo {
+					id
 					email
 					userprofile {
+						id
 						companyName
 					}
 				}
-				note
-				isSponsored
-				created
 			}
 		}
 	}
