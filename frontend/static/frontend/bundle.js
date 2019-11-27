@@ -92,7 +92,9 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 				isConfirmed
 				employeeEmail
 				company {
+					id
 					userprofile {
+						id
 						companyName
 					}
 				}
@@ -108,12 +110,14 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 			company {
 				id
 				userprofile {
+					id
 					companyName
 				}
 			}
 			employee {
 				id
 				userprofile {
+					id
 					firstName
 					lastName
 				}
@@ -132,6 +136,7 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 				id
 				email
 				userprofile {
+					id
 					firstName
 					lastName
 				}
@@ -140,6 +145,7 @@ var app=function(){"use strict";function e(){}const t=e=>e;function n(e,t){for(c
 				id
 				email
 				userprofile {
+					id
 					companyName
 				}
 			}

@@ -38,7 +38,6 @@
     clearTokenRefreshTimeout
   } from "./authMethods.js";
   import Noto, { notifications } from "./Noto.svelte";
-  import Table from "./table_view/Table.svelte";
 
   let selectedCompanyId = "";
 

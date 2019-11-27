@@ -110,7 +110,9 @@ export const CONFIRM_INVITATION = gql`
 				isConfirmed
 				employeeEmail
 				company {
+					id
 					userprofile {
+						id
 						companyName
 					}
 				}
@@ -128,12 +130,14 @@ export const GET_CONNECTIONS = gql`
 			company {
 				id
 				userprofile {
+					id
 					companyName
 				}
 			}
 			employee {
 				id
 				userprofile {
+					id
 					firstName
 					lastName
 				}
@@ -154,6 +158,7 @@ export const GET_SHIFTS = gql`
 				id
 				email
 				userprofile {
+					id
 					firstName
 					lastName
 				}
@@ -162,6 +167,7 @@ export const GET_SHIFTS = gql`
 				id
 				email
 				userprofile {
+					id
 					companyName
 				}
 			}
