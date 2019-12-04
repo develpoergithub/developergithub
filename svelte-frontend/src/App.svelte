@@ -7,7 +7,7 @@
   import Router, { push, pop, replace, location } from "svelte-spa-router";
   import { routes } from "./Routes.svelte";
   import Header from "./Header.svelte";
-  import { ApolloClient } from "apollo-client";
+  import ApolloClient from "apollo-boost";
   import { InMemoryCache } from "apollo-cache-inmemory";
   import { HttpLink } from "apollo-link-http";
   import { WebSocketLink } from "apollo-link-ws";
@@ -56,30 +56,30 @@
   // console.log("PROTOCOL HTTP : " + HTTP_GRAPHQL_ENDPOINT);
   // console.log("PROTOCOL WS : " + WS_GRAPHQL_ENDPOINT);
 
-  const httpLink = new HttpLink({
-    uri: HTTP_GRAPHQL_ENDPOINT
-    // credentials: 'same-origin'
-  });
+  // const httpLink = new HttpLink({
+  //   uri: HTTP_GRAPHQL_ENDPOINT
+  //   // credentials: 'same-origin'
+  // });
 
-  const wsLink = new WebSocketLink({
-    uri: WS_GRAPHQL_ENDPOINT,
-    options: {
-      reconnect: true
-    }
-  });
+  // const wsLink = new WebSocketLink({
+  //   uri: WS_GRAPHQL_ENDPOINT,
+  //   options: {
+  //     reconnect: true
+  //   }
+  // });
 
-  const link = split(
-    ({ query }) => {
-      const { kind, operation } = getMainDefinition(query);
-      return kind === "OperationDefinition" && operation === "subscription";
-    },
-    wsLink,
-    httpLink
-  );
+  // const link = split(
+  //   ({ query }) => {
+  //     const { kind, operation } = getMainDefinition(query);
+  //     return kind === "OperationDefinition" && operation === "subscription";
+  //   },
+  //   wsLink,
+  //   httpLink
+  // );
 
   const client = new ApolloClient({
-    link,
-    cache: new InMemoryCache()
+    cache: new InMemoryCache(),
+    uri: HTTP_GRAPHQL_ENDPOINT
   });
 
   setClient(client);

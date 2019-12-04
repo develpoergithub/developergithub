@@ -173,10 +173,8 @@
           element.postedBy.userprofile.lastName,
         Note: element.note
       };
-      bodies.push(shiftDisplay);
+      bodies = [...bodies, shiftDisplay];
     });
-
-    bodies = bodies;
   }
 
   // $: if ($selectedCompany) {
