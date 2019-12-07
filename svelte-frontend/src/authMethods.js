@@ -9,7 +9,8 @@ import {
 	connections,
 	shifts,
 	shiftConnections,
-	menuDisplayed
+	menuDisplayed,
+	myShifts
 } from './store.js';
 import {
 	CREATE_USER,
@@ -18,6 +19,7 @@ import {
 	REFRESH_TOKEN,
 	GET_USER,
 	GET_SHIFTS,
+	GET_MY_SHIFTS,
 	GET_CONNECTIONS,
 	GET_SHIFT_CONNECTIONS,
 	ACCEPT_SHIFT_CONNECTION,
@@ -189,7 +191,7 @@ export async function fetchConnections(client) {
 	try {
 		await getConnections.refetch().then(result => {
 			connections.set(result.data.connections);
-			// console.log($connections);
+			console.log(result.data.connections);
 		});
 	} catch (error) {
 		console.log(error);
@@ -207,9 +209,22 @@ export async function fetchShifts(client, selectedCompanyId) {
 		console.log('Fetching Shifts');
 		await getShifts.refetch().then(result => {
 			shifts.set(result.data.shifts);
-			// myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
-			// console.log(myShifts);
-			// console.log($shifts);
+		});
+	} catch (error) {
+		console.log(error);
+	}
+}
+
+export async function fetchMyShifts(client, selectedCompanyId) {
+	const getMyShifts = query(client, {
+		query: GET_MY_SHIFTS,
+		variables: { companyId: selectedCompanyId }
+	});
+
+	try {
+		console.log('Fetching My Shifts');
+		await getMyShifts.refetch().then(result => {
+			myShifts.set(result.data.myShifts);
 		});
 	} catch (error) {
 		console.log(error);

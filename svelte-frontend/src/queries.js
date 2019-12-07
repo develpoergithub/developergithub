@@ -127,6 +127,8 @@ export const GET_CONNECTIONS = gql`
 		connections {
 			id
 			created
+			isConfirmed
+			isDeclined
 			company {
 				id
 				userprofile {
@@ -136,6 +138,7 @@ export const GET_CONNECTIONS = gql`
 			}
 			employee {
 				id
+				email
 				userprofile {
 					id
 					firstName
@@ -149,6 +152,36 @@ export const GET_CONNECTIONS = gql`
 export const GET_SHIFTS = gql`
 	query($companyId: ID!) {
 		shifts(companyId: $companyId) {
+			id
+			fromTime
+			toTime
+			note
+			isSponsored
+			created
+			postedBy {
+				id
+				email
+				userprofile {
+					id
+					firstName
+					lastName
+				}
+			}
+			postedTo {
+				id
+				email
+				userprofile {
+					id
+					companyName
+				}
+			}
+		}
+	}
+`;
+
+export const GET_MY_SHIFTS = gql`
+	query($companyId: ID!) {
+		myShifts(companyId: $companyId) {
 			id
 			fromTime
 			toTime
@@ -278,6 +311,7 @@ export const GET_SHIFT_CONNECTIONS = gql`
 				postedBy {
 					id
 					userprofile {
+						id
 						firstName
 						lastName
 					}
@@ -285,6 +319,7 @@ export const GET_SHIFT_CONNECTIONS = gql`
 				postedTo {
 					id
 					userprofile {
+						id
 						companyName
 					}
 				}
@@ -298,6 +333,7 @@ export const GET_SHIFT_CONNECTIONS = gql`
 				postedBy {
 					id
 					userprofile {
+						id
 						firstName
 						lastName
 					}
@@ -305,6 +341,7 @@ export const GET_SHIFT_CONNECTIONS = gql`
 				postedTo {
 					id
 					userprofile {
+						id
 						companyName
 					}
 				}

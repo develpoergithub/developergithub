@@ -150,6 +150,7 @@ class ConfirmShiftConnection(graphene.Mutation):
 
 class ShiftQuery(graphene.ObjectType):
     shifts = graphene.List(ShiftType, company_id=graphene.ID())
+    my_shifts = graphene.List(ShiftType, company_id=graphene.ID())
     all_shifts = graphene.List(ShiftType)
     all_shift_connections = graphene.List(ShiftConnectionType)
     shift_connections = graphene.List(
@@ -162,6 +163,14 @@ class ShiftQuery(graphene.ObjectType):
         except User.DoesNotExist:
             raise Exception("Can not resolve company from id")
         return Shift.objects.filter(posted_to=company)
+
+    @login_required
+    def resolve_my_shifts(self, info, company_id):
+        try:
+            company = User.objects.get(id=company_id)
+        except User.DoesNotExist:
+            raise Exception("Can not resolve company from id")
+        return Shift.objects.filter(posted_to=company, posted_by=info.context.user)
 
     # Not Safe, Only for Testing
 

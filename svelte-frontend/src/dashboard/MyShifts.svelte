@@ -15,6 +15,7 @@
     menuDisplayed
   } from "../store.js";
   import {
+    fetchMyShifts,
     fetchShiftConnections,
     acceptShiftConnection
   } from "../authMethods.js";
@@ -39,75 +40,6 @@
   let bodies = [];
 
   const client = getClient();
-
-  // async function fetchShiftsFromInput() {
-  //   if (!selectedCompany) {
-  //     return;
-  //   }
-
-  //   selectedCompanyId = selectedCompany.company.id;
-
-  //   fetchShifts();
-  // }
-
-  // async function fetchShifts() {
-  //   const getShifts = query(client, {
-  //     query: GET_SHIFTS,
-  //     variables: { companyId: selectedCompanyId }
-  //   });
-
-  //   try {
-  //     await getShifts.refetch().then(result => {
-  //       shifts.set(result.data.shifts);
-  //       myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
-  //       // console.log(myShifts);
-  //       // console.log($shifts);
-  //     });
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }
-
-  //   async function proposeShift() {
-  //     if (requestingShiftConnection === true) {
-  //       notifications.info("A Shift Request is in progress!");
-  //       return;
-  //     }
-
-  //     if (!selectedShift || !clickedShift) {
-  //       notifications.danger("You must select a shift to propose");
-  //       return;
-  //     }
-
-  //     requestingShiftConnection = true;
-
-  //     try {
-  //       await mutate(client, {
-  //         mutation: PROPOSE_SHIFT,
-  //         variables: {
-  //           proposedShiftId: selectedShift.id,
-  //           shiftId: clickedShift.id
-  //         }
-  //       }).then(result => {
-  //         console.log(result.data.createShiftConnection.shiftConnection);
-  //         notifications.success("Shift Request Sent");
-  //         requestingShiftConnection = false;
-  //       });
-  //     } catch (error) {
-  //       notifications.danger("Something went wrong! Please try again.");
-  //       console.log(error);
-  //       requestingShiftConnection = false;
-  //     }
-  //   }
-
-  //   $: getShifts.refetch({ companyId: selectedCompanyId }).then(result => {
-  //     shifts.set(result);
-  //     //console.log($shifts);
-  //   });
-
-  //   $: if (Object.getOwnPropertyNames(selectedCompany) === 0) {
-  //     console.log(selectedCompany.company.id);
-  //   }
 
   function handleClickedShift(shift, tr) {
     if (showing === true && clickedShift.id === shift.id) {
@@ -153,14 +85,6 @@
     showing = false;
   }
 
-  onMount(async () => {
-    if (!$user.isCompany) {
-      if ($selectedCompany.id) {
-        await fetchShiftConnections(client, $selectedCompany.id);
-      }
-    }
-  });
-
   $: if ($myShifts.length > 0) {
     $myShifts.forEach(element => {
       let shiftDisplay = {
@@ -179,13 +103,12 @@
     bodies = bodies;
   }
 
-  // $: if ($selectedCompany) {
-  //   selectedCompanyId = $selectedCompany.id;
-
-  //   if (selectedCompanyId) {
-  //     fetchShifts();
-  //   }
-  // }
+  onMount(async () => {
+    if (Object.entries($selectedCompany).length > 0) {
+      await fetchMyShifts(client, $selectedCompany.id);
+      await fetchShiftConnections(client, $selectedCompany.id);
+    }
+  });
 </script>
 
 <style>

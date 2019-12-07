@@ -48,10 +48,10 @@
     border-bottom: 2px solid #009879;
   }
 
-  .content-table tbody tr.active-row {
+  /* .content-table tbody tr.active-row {
     font-weight: bold;
     color: #009879;
-  }
+  } */
 
   .content-table th {
     background-color: #009879;

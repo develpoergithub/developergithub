@@ -33,6 +33,7 @@
     fetchUser,
     fetchConnections,
     fetchShifts,
+    fetchMyShifts,
     fetchShiftConnections,
     tokenRefreshTimeoutFunc,
     clearTokenRefreshTimeout
@@ -150,11 +151,10 @@
     menuDisplayed.set(true);
     await tokenRefreshTimeoutFunc(client);
     await fetchUser(client);
-    await fetchConnections(client);
     if ($user.isCompany) {
-      selectedCompanyId = $user.id;
-      getShifts();
+      $selectedCompany = $user;
     }
+    await fetchConnections(client);
   }
 
   async function loggedOutFunc() {
@@ -186,17 +186,13 @@
     // await checkSession(client);
   });
 
-  $: if ($selectedCompany) {
+  $: if (Object.entries($selectedCompany).length > 0) {
     selectedCompanyId = $selectedCompany.id;
-    getShifts();
-  }
-
-  async function getShifts() {
-    if (selectedCompanyId) {
-      await fetchShifts(client, selectedCompanyId);
-      $myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
-      await fetchShiftConnections(client, selectedCompanyId);
+    fetchShifts(client, selectedCompanyId);
+    if (!$user.isCompany) {
+      fetchMyShifts(client, selectedCompanyId);
     }
+    fetchShiftConnections(client, selectedCompanyId);
   }
 </script>
 

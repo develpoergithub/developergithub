@@ -18,7 +18,9 @@ class UserProfile(models.Model):
     age = models.PositiveIntegerField(null=True)
     company_name = models.CharField(max_length=160, null=True)
     company_address = models.TextField(null=True)
+    # Already Exist in User table, remove duplicate...
     email = models.EmailField(null=True)
+    # ...remove duplicate.
     tel = models.CharField(max_length=20, null=True)
     url = models.TextField(null=True)
     photo_url = models.TextField(null=True)

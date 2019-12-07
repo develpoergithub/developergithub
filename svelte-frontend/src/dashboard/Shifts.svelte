@@ -13,8 +13,9 @@
     myShifts,
     menuDisplayed
   } from "../store.js";
+  import { fetchShifts, fetchMyShifts } from "../authMethods.js";
   import { getClient, query, mutate } from "svelte-apollo";
-  import { GET_SHIFTS, PROPOSE_SHIFT } from "../queries.js";
+  import { PROPOSE_SHIFT } from "../queries.js";
   import { notifications } from "../Noto.svelte";
   import { formatDate } from "timeUtils";
   import TableView from "../TableView.svelte";
@@ -35,34 +36,6 @@
   let bodies = [];
 
   const client = getClient();
-
-  // async function fetchShiftsFromInput() {
-  //   if (!selectedCompany) {
-  //     return;
-  //   }
-
-  //   selectedCompanyId = selectedCompany.company.id;
-
-  //   fetchShifts();
-  // }
-
-  // async function fetchShifts() {
-  //   const getShifts = query(client, {
-  //     query: GET_SHIFTS,
-  //     variables: { companyId: selectedCompanyId }
-  //   });
-
-  //   try {
-  //     await getShifts.refetch().then(result => {
-  //       shifts.set(result.data.shifts);
-  //       myShifts = $shifts.filter(shift => shift.postedBy.id === $user.id);
-  //       // console.log(myShifts);
-  //       // console.log($shifts);
-  //     });
-  //   } catch (error) {
-  //     console.log(error);
-  //   }
-  // }
 
   async function proposeShift() {
     if (requestingShiftConnection === true) {
@@ -94,15 +67,6 @@
       requestingShiftConnection = false;
     }
   }
-
-  //   $: getShifts.refetch({ companyId: selectedCompanyId }).then(result => {
-  //     shifts.set(result);
-  //     //console.log($shifts);
-  //   });
-
-  //   $: if (Object.getOwnPropertyNames(selectedCompany) === 0) {
-  //     console.log(selectedCompany.company.id);
-  //   }
 
   function handleClickedShift(shift, tr) {
     if (requestingShiftConnection === true) {
@@ -138,21 +102,6 @@
     }, 1);
   }
 
-  // onMount(() => {
-  //   if ($user.isCompany) {
-  //     selectedCompanyId = $user.id;
-  //     fetchShifts();
-  //   }
-  // });
-
-  // $: if ($selectedCompany) {
-  //   selectedCompanyId = $selectedCompany.id;
-
-  //   if (selectedCompanyId) {
-  //     fetchShifts();
-  //   }
-  // }
-
   $: if ($shifts.length > 0) {
     $shifts.forEach(element => {
       let shiftDisplay = {
@@ -170,6 +119,12 @@
 
     bodies = bodies;
   }
+
+  onMount(() => {
+    if (Object.entries($selectedCompany).length > 0) {
+      fetchShifts(client, $selectedCompany.id);
+    }
+  });
 </script>
 
 <style>
