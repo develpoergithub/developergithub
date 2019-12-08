@@ -26,7 +26,7 @@
   let showing = false;
   let requestingShiftConnection = false;
   let selectedCompanyId = "";
-  let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
+  let dateFormat = "#{D}, #{M} #{j}, #{Y} at #{h}:#{i}#{A}";
   let popoverX;
   let popoverY;
   let popoverWrapper;
@@ -103,6 +103,7 @@
   }
 
   $: if ($shifts.length > 0) {
+    bodies = [];
     $shifts.forEach(element => {
       let shiftDisplay = {
         id: element.id,

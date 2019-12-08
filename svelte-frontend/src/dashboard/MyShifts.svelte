@@ -30,7 +30,7 @@
   let proposedShiftConnections = [];
   let clickedShift;
   let showing = false;
-  let dateFormat = "#{l}, #{F} #{j}, #{Y} at #{H}:#{i}";
+  let dateFormat = "#{D}, #{M} #{j}, #{Y} at #{h}:#{i}#{A}";
   let popoverX;
   let popoverY;
   let popoverWrapper;
@@ -86,6 +86,7 @@
   }
 
   $: if ($myShifts.length > 0) {
+    bodies = [];
     $myShifts.forEach(element => {
       let shiftDisplay = {
         id: element.id,

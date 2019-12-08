@@ -273,11 +273,17 @@
           </li>
         {/if}
         <li>
-          <a href="#/dashboard/shifts">Shift</a>
+          <a href="#/dashboard/shifts">Shifts</a>
         </li>
         {#if !$user.isCompany}
           <li>
-            <a href="#/dashboard/myshifts">My Shift</a>
+            <a href="#/dashboard/myshifts">My Shifts</a>
+          </li>
+          <li>
+            <a href="#/dashboard/proposedshifts">Proposed Shifts</a>
+          </li>
+          <li>
+            <a href="#/dashboard/shiftrequests">Shift Requests</a>
           </li>
         {/if}
         <li>

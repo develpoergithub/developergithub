@@ -191,7 +191,7 @@ export async function fetchConnections(client) {
 	try {
 		await getConnections.refetch().then(result => {
 			connections.set(result.data.connections);
-			console.log(result.data.connections);
+			// console.log(result.data.connections);
 		});
 	} catch (error) {
 		console.log(error);
