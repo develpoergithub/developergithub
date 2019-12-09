@@ -1,5 +1,6 @@
 <script>
   import { push } from "svelte-spa-router";
+  import { getClient } from "svelte-apollo";
   import {
     keepMeLoggedIn,
     isLoggedIn,
@@ -11,10 +12,12 @@
   } from "./store.js";
   import { logout } from "./authMethods.js";
 
+  const client = getClient();
+
   let selectedUserConnection;
 
   function handleLogout() {
-    logout();
+    logout(client);
   }
 
   function toggleMenu() {

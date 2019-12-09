@@ -23,7 +23,8 @@ import {
 	GET_CONNECTIONS,
 	GET_SHIFT_CONNECTIONS,
 	ACCEPT_SHIFT_CONNECTION,
-	CHECK_LOGIN
+	CHECK_LOGIN,
+	REVOKE_TOKEN
 } from './queries.js';
 
 let tokenRefreshTimeout;
@@ -39,11 +40,25 @@ async function tokenRefresh(client, oldToken) {
 			lastLoggedIn.set(Date.now());
 			isLoggedIn.set(true);
 			tokenRefreshTimeoutFunc(client);
+			revokeToken(client, oldToken);
 			// push("/dashboard/");
 		});
 	} catch (error) {
 		console.log(error);
 		isLoggedIn.set(false);
+	}
+}
+
+async function revokeToken(client, oldToken) {
+	try {
+		await mutate(client, {
+			mutation: REVOKE_TOKEN,
+			variables: { refreshToken: oldToken }
+		}).then(result => {
+			console.log('Revoked Token ' + result.data.revokeToken.revoked);
+		});
+	} catch (error) {
+		console.log(error);
 	}
 }
 
@@ -142,7 +157,9 @@ export async function login(client, email, password, isKeepMeLoggedIn) {
 	});
 }
 
-export function logout() {
+export function logout(client) {
+	let token = JSON.parse(localStorage.getItem('refreshToken'));
+	revokeToken(client, token);
 	refreshToken.set('');
 	lastLoggedIn.set(0);
 	keepMeLoggedIn.set(false);

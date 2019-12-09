@@ -1098,6 +1098,134 @@
   }
 },
 {
+  "model": "account.useractivation",
+  "pk": "7e8b8573-9af4-4ff1-8e08-25370f0e56f8",
+  "fields": {
+    "created": "2019-08-25T12:09:39.184Z",
+    "user": [
+      "martinsdennis86@gmail.com"
+    ],
+    "code": "385068"
+  }
+},
+{
+  "model": "account.useractivation",
+  "pk": "83008469-14ca-4ceb-a8f7-fccdadf90a4a",
+  "fields": {
+    "created": "2019-10-06T14:49:30.384Z",
+    "user": [
+      "jane@em-box.ru"
+    ],
+    "code": "810680"
+  }
+},
+{
+  "model": "account.useractivation",
+  "pk": "fda632c6-ce84-4b8d-972b-bc38237b5c02",
+  "fields": {
+    "created": "2019-10-29T23:24:40.063Z",
+    "user": [
+      "wowimom437@mailnet.top"
+    ],
+    "code": "363378"
+  }
+},
+{
+  "model": "account.useractivation",
+  "pk": "ffd71bee-96d5-42e8-9ebf-f49760113485",
+  "fields": {
+    "created": "2019-08-20T22:13:56.602Z",
+    "user": [
+      "martinsodabi@gmail.com"
+    ],
+    "code": "395483"
+  }
+},
+{
+  "model": "user_profile.userprofile",
+  "pk": "71facd2e-4783-459f-b915-a16f088469dd",
+  "fields": {
+    "created": "2019-10-06T14:49:31.802Z",
+    "user": [
+      "jane@em-box.ru"
+    ],
+    "first_name": "Jane",
+    "last_name": "Goodwoman",
+    "age": null,
+    "company_name": null,
+    "company_address": null,
+    "email": null,
+    "tel": null,
+    "url": null,
+    "photo_url": null,
+    "admin_name": null,
+    "company_position": null
+  }
+},
+{
+  "model": "user_profile.userprofile",
+  "pk": "79dc68d6-8985-45f1-a50c-b75d603b1cab",
+  "fields": {
+    "created": "2019-08-25T12:09:43.700Z",
+    "user": [
+      "martinsdennis86@gmail.com"
+    ],
+    "first_name": "Martins",
+    "last_name": "Dennis",
+    "age": null,
+    "company_name": null,
+    "company_address": null,
+    "email": null,
+    "tel": null,
+    "url": null,
+    "photo_url": null,
+    "admin_name": null,
+    "company_position": null
+  }
+},
+{
+  "model": "user_profile.userprofile",
+  "pk": "e6216d4b-796e-4dd7-8814-7befa42f2d03",
+  "fields": {
+    "created": "2019-10-29T23:24:43.733Z",
+    "user": [
+      "wowimom437@mailnet.top"
+    ],
+    "first_name": null,
+    "last_name": null,
+    "age": null,
+    "company_name": "Wowimom Inc",
+    "company_address": null,
+    "email": null,
+    "tel": null,
+    "url": null,
+    "photo_url": null,
+    "admin_name": null,
+    "company_position": null
+  }
+},
+{
+  "model": "user_profile.userprofile",
+  "pk": "ee6716ef-8086-4da5-b010-81c376be4009",
+  "fields": {
+    "created": "2019-08-20T22:14:00.835Z",
+    "user": [
+      "martinsodabi@gmail.com"
+    ],
+    "first_name": null,
+    "last_name": null,
+    "age": null,
+    "company_name": "Martins Inc",
+    "company_address": null,
+    "email": null,
+    "tel": null,
+    "url": null,
+    "photo_url": null,
+    "admin_name": null,
+    "company_position": null
+  }
+},
+{
   "model": "shift.shift",
   "pk": "0da98ad4-5e8e-4a52-a9f1-3e1d5b512047",
   "fields": {

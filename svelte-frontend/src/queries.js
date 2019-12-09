@@ -39,6 +39,14 @@ export const LOGIN_USER = gql`
 	}
 `;
 
+export const REVOKE_TOKEN = gql`
+	mutation($refreshToken: String!) {
+		revokeToken(refreshToken: $refreshToken) {
+			revoked
+		}
+	}
+`;
+
 export const GET_USER = gql`
 	{
 		me {
